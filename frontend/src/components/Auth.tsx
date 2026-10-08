@@ -12,6 +12,7 @@ export default function Auth({ onLogin }: { onLogin: (token: string, user: User)
   const [avatar, setAvatar] = useState("💙");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,6 +22,7 @@ export default function Auth({ onLogin }: { onLogin: (token: string, user: User)
     setError("");
     setPassword("");
     setConfirmation("");
+    setOtp("");
     setShowPassword(false);
   }
 
@@ -37,7 +39,7 @@ export default function Auth({ onLogin }: { onLogin: (token: string, user: User)
         null,
         post(mode === "signin"
           ? { username: username.trim(), password }
-          : { username: username.trim(), display_name: name.trim(), avatar, password }),
+          : { username: username.trim(), display_name: name.trim(), avatar, password, otp }),
       );
       onLogin(result.token, result.user);
     } catch (e) {
@@ -79,7 +81,7 @@ export default function Auth({ onLogin }: { onLogin: (token: string, user: User)
           <div className="auth-heading">
             <span className="auth-eyebrow">YOUR ACCOUNT</span>
             <h2>{mode === "signin" ? "Welcome back" : "Create an account"}</h2>
-            <p>{mode === "signin" ? "Sign in to continue your conversations." : "Choose a username and a strong password to get started."}</p>
+            <p>{mode === "signin" ? "Sign in to continue your conversations." : "Choose a username or phone number and verify your demo account."}</p>
           </div>
           <div className="auth-tabs" role="tablist" aria-label="Account action">
             <button type="button" role="tab" aria-selected={mode === "signin"} className={mode === "signin" ? "active" : ""} onClick={() => changeMode("signin")} disabled={busy}>Sign in</button>
@@ -87,12 +89,14 @@ export default function Auth({ onLogin }: { onLogin: (token: string, user: User)
           </div>
           <form className="auth-form" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
             {mode === "signup" && <label>Display name<input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={60} placeholder="Your name" disabled={busy} /></label>}
-            <label>Username<input autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required minLength={3} maxLength={64} spellCheck={false} placeholder="Your username" disabled={busy} /></label>
+            <label>Username or phone number<input autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required minLength={3} maxLength={64} spellCheck={false} placeholder="Username or phone number" disabled={busy} /></label>
             <label>Password<span className="auth-password-field">
               <input type={showPassword ? "text" : "password"} autoComplete={mode === "signin" ? "current-password" : "new-password"} minLength={mode === "signup" ? 12 : 1} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder={mode === "signup" ? "At least 12 characters" : "Enter your password"} disabled={busy} />
               <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} disabled={busy}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
             </span></label>
             {mode === "signup" && <><label>Confirm password<input type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={12} maxLength={128} value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required placeholder="Re-enter your password" disabled={busy} /></label>
+              <label>Demo verification code<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} required placeholder="6-digit code" disabled={busy} /></label>
+              <p className="auth-otp-note">For this assignment demo, use code <strong>123456</strong>. No SMS is sent.</p>
               <div className="auth-avatar-label">Choose an avatar</div>
               <div className="avatar-picker" role="group" aria-label="Profile avatar">{AVATARS.map((a) => <button type="button" aria-label={`Choose ${a} avatar`} aria-pressed={avatar === a} key={a} className={avatar === a ? "chosen" : ""} onClick={() => setAvatar(a)} disabled={busy}>{a}</button>)}</div>
             </>}

@@ -27,6 +27,7 @@ def login(client, name):
                 "display_name": name,
                 "avatar": "💙",
                 "password": "test-password-2026",
+                "otp": "123456",
             },
         )
         if response.status_code == 409:
@@ -71,6 +72,13 @@ def test_registration_persistence_and_logout(client):
 def test_separate_password_and_demo_authentication(client):
     assert (
         client.post(
+            "/auth/register",
+            json={"username": "badotp", "display_name": "Bad OTP", "password": "test-password-2026", "otp": "000000"},
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
             "/auth/login", json={"username": "alex", "password": "123456"}
         ).status_code
         == 401
@@ -85,7 +93,7 @@ def test_separate_password_and_demo_authentication(client):
     assert (
         client.post(
             "/auth/register",
-            json={"username": "shortpass", "display_name": "New", "password": "short"},
+            json={"username": "shortpass", "display_name": "New", "password": "short", "otp": "123456"},
         ).status_code
         == 422
     )
@@ -97,6 +105,7 @@ def test_separate_password_and_demo_authentication(client):
                 "username": "realaccount",
                 "display_name": "Again",
                 "password": "test-password-2026",
+                "otp": "123456",
             },
         ).status_code
         == 409

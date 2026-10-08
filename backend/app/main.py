@@ -91,6 +91,7 @@ class Register(BaseModel):
     display_name: str = Field(min_length=1, max_length=60)
     avatar: str = "💙"
     password: str = Field(min_length=12, max_length=128)
+    otp: str = Field(min_length=6, max_length=6)
 
 
 class DemoLogin(BaseModel):
@@ -282,6 +283,8 @@ def register(data: Register, request: Request):
         f"register-ip:{request.client.host if request.client else 'unknown'}", 10
     )
     rate_limit(f"register-user:{username}", 5)
+    if not secrets.compare_digest(data.otp, "123456"):
+        raise HTTPException(401, "Incorrect demo verification code.")
     display = data.display_name.strip()
     if not display or data.avatar not in AVATARS:
         raise HTTPException(422, "Choose a display name and profile avatar.")

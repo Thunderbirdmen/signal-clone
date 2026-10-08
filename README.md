@@ -134,7 +134,7 @@ All routes except `/auth/login`, `/auth/register`, `/auth/demo`, and `/health` r
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | POST | /auth/login | Password sign-in for an existing account |
-| POST | /auth/register | Create a password-protected account |
+| POST | /auth/register | Create a password-protected account using the visible mocked OTP (`123456`) |
 | POST | /auth/demo | Enter a seeded public sample account when enabled |
 | POST | /auth/logout | Revoke current session and close its sockets |
 | GET / PATCH | /me | Read/update profile |
@@ -190,7 +190,7 @@ See [verification notes](docs/VERIFICATION.md), [deployment guide](docs/DEPLOYME
 
 ## Assumptions and tradeoffs
 
-1. Username/phone ownership is deliberately **not verified**. Seeded accounts are publicly accessible while `ENABLE_DEMO_LOGIN=true`. New accounts require a 12-character password stored as a salted PBKDF2 hash. Account recovery and real identity verification are not implemented, so this is not production authentication.
+1. Registration includes a clearly labeled fixed demo OTP (`123456`) to reflect the assignment flow. It does **not** verify username or phone ownership, and no SMS is sent. Seeded accounts are publicly accessible while `ENABLE_DEMO_LOGIN=true`. New accounts require a 12-character password stored as a salted PBKDF2 hash. Account recovery and real identity verification are not implemented, so this is not production authentication.
 2. Sessions use random bearer tokens; only SHA-256 hashes are stored in SQLite. The browser stores the token in localStorage for simple persistence. Production should use an appropriate secure cookie/session design and real identity verification.
 3. Emoji avatars satisfy profile avatar selection without file-upload storage. Profile photos are not implemented.
 4. New group members can read the group's existing history. Removed members cannot fetch/send/read or receive new chat events. Original receipt recipients are retained; removing a member does not rewrite historical delivery status.
