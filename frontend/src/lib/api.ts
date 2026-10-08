@@ -2,6 +2,12 @@ export const API = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 ).replace(/\/$/, "");
 export const WS = API.replace(/^http/, "ws") + "/ws";
+export class ApiError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 export const AVATARS = [
   "💙",
   "🌿",
@@ -76,7 +82,8 @@ export async function api<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const response = await fetch(API + path, {
-    signal: AbortSignal.timeout(15000),
+    // Render's free demo instance can take around a minute to wake.
+    signal: AbortSignal.timeout(75000),
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -86,10 +93,11 @@ export async function api<T>(
   });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(
+    throw new ApiError(
       typeof data.detail === "string"
         ? data.detail
         : `Request failed (${response.status}).`,
+      response.status,
     );
   }
   return response.json();

@@ -227,10 +227,10 @@ small {
   padding: 32px 20px 18px;
 }
 .auth-shell {
-  width: min(980px, 100%);
+  width: min(1060px, 100%);
   min-height: 650px;
   display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(400px, 1fr);
+  grid-template-columns: minmax(320px, 0.94fr) minmax(400px, 1fr);
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -243,7 +243,7 @@ small {
   justify-content: space-between;
   padding: 38px 42px;
   color: #fff;
-  background: linear-gradient(145deg, #2869d5, #3852b8 62%, #303a92);
+  background: linear-gradient(155deg, #2d73e8, #3156cb 62%, #293b95);
   position: relative;
   overflow: hidden;
 }
@@ -290,6 +290,18 @@ small {
   line-height: 1.65;
   max-width: 320px;
 }
+.auth-chat-preview { max-width: 340px; margin-top: 31px; overflow: hidden; border-radius: 17px; background: #f8f9fc; color: #222631; box-shadow: 0 20px 50px #12265b55; transform: rotate(-2deg); }
+.auth-preview-top { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: white; border-bottom: 1px solid #e9ebf2; font-size: 13px; }
+.auth-preview-top small { color: #3974d6; font-size: 11px; margin-top: 3px; }
+.auth-preview-avatar { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: #e6f2e7; font-size: 19px; }
+.auth-preview-dots { margin-left: auto; color: #8891a3; letter-spacing: 2px; }
+.auth-preview-messages { min-height: 171px; padding: 16px; display: flex; flex-direction: column; gap: 13px; align-items: flex-start; }
+.auth-preview-day { align-self: center; color: #8c94a5; font-size: 9px; letter-spacing: 1px; }
+.auth-preview-incoming, .auth-preview-outgoing { max-width: 84%; padding: 10px 12px; border-radius: 13px; font-size: 12px; line-height: 1.4; }
+.auth-preview-incoming { background: #e8e9ee; border-bottom-left-radius: 4px; }
+.auth-preview-outgoing { align-self: flex-end; background: #3677ed; color: white; border-bottom-right-radius: 4px; }
+.auth-preview-outgoing span { color: #c9deff; margin-left: 4px; }
+.auth-preview-compose { margin: 0 13px 13px; padding: 10px 13px; border: 1px solid #e3e5ec; border-radius: 20px; background: white; color: #a0a7b2; font-size: 11px; display: flex; justify-content: space-between; }
 .auth-intro-foot {
   display: flex;
   align-items: center;
@@ -362,6 +374,13 @@ small {
 .auth-password-field button:hover { background: var(--surface); }
 .auth-otp-note { margin: -9px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .auth-otp-note strong { color: var(--text); letter-spacing: 0.08em; }
+.auth-field-help { margin: -12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.auth-code-input { text-align: center; letter-spacing: 0.5em; font-size: 22px !important; font-weight: 700; }
+.auth-verification-icon { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 17px; background: var(--selected); color: var(--blue); }
+.auth-back { color: var(--blue); font-size: 13px; display: flex; align-items: center; gap: 5px; width: fit-content; padding: 4px 0; }
+.auth-back:hover { text-decoration: underline; }
+.auth-demo-toggle { width: 100%; min-height: 42px; color: var(--blue); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; font-weight: 650; }
+.auth-demo-toggle:hover { background: var(--surface); }
 .auth-avatar-label { font-size: 13px; font-weight: 650; }
 .auth-submit { min-height: 45px; margin-top: 5px; justify-content: center; gap: 9px; }
 .auth-error { margin: 0; }
@@ -411,6 +430,7 @@ small {
 .demo-buttons {
   display: flex;
   gap: 8px;
+  margin-top: 10px;
 }
 .demo-buttons button {
   border: 1px solid var(--line);

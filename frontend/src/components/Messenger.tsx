@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X, CheckCircle2 } from "lucide-react";
-import { api, post, User } from "@/lib/api";
+import { api, ApiError, post, User } from "@/lib/api";
 import { useMessenger } from "@/lib/useMessenger";
 import Auth from "./Auth";
 import Sidebar from "./Sidebar";
@@ -29,7 +29,10 @@ export default function Messenger() {
           setMe(user);
           setToken(saved);
         })
-        .catch((e) => notify((e as Error).message))
+        .catch((e) => {
+          if (e instanceof ApiError && e.status === 401) localStorage.removeItem("signal-session");
+          notify((e as Error).message);
+        })
         .finally(() => setReady(true));
     else setReady(true);
     return () => clearTimeout(timer.current);
