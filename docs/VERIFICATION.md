@@ -42,5 +42,6 @@ Screenshots: `desktop-features.jpg` and `mobile-features.jpg` in this directory.
 
 - GitHub Actions [Validate application #1](https://github.com/Thunderbirdmen/signal-clone/actions/runs/37826930351) completed successfully on the initial public commit.
 - Dockerfiles and Compose configuration are supplied but were not executed locally because Docker was unavailable.
-- Hosted behavior, HTTPS, provider CORS configuration and persistence across provider restarts must be verified after deployment.
+- On 9 October 2026, the HTTPS Vercel demo signed in as Alex against the Render API, loaded seeded conversations, sent a message, and showed that message after a page reload. Render reported the CORS configuration redeploy successful. Cross-account hosted WebSocket behavior has not yet been checked.
+- The Render free instance has no persistent disk. Persistence across a provider restart is unavailable and should not be claimed for the hosted demo.
 - This is not a load test, a cryptographic security review, or exhaustive automated browser coverage.

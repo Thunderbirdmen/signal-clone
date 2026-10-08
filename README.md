@@ -2,6 +2,8 @@
 
 A Signal-inspired messaging application for the fullstack recruitment assignment. Built from scratch with **Next.js + TypeScript**, **FastAPI**, **SQLite**, and **WebSockets**.
 
+**Live demo:** [tanishq-signal-clone.vercel.app](https://tanishq-signal-clone.vercel.app) · [API health](https://signal-clone-api-u17l.onrender.com/health). The backend runs on Render's free tier: it can take around a minute to wake after inactivity, and its SQLite data can be erased when the service restarts or redeploys. Use only the seeded demo accounts and test data.
+
 > Educational demo, not an official Signal client. Verification uses the fixed code `123456`. Messages are stored as plaintext; real end-to-end encryption is not implemented. Do not use it for private communication.
 
 ![Desktop conversation preview](docs/desktop-features.jpg)
@@ -192,7 +194,7 @@ See [verification notes](docs/VERIFICATION.md), [deployment guide](docs/DEPLOYME
 3. Emoji avatars satisfy profile avatar selection without file-upload storage. Profile photos are not implemented.
 4. New group members can read the group's existing history. Removed members cannot fetch/send/read or receive new chat events. Original receipt recipients are retained; removing a member does not rewrite historical delivery status.
 5. Group admins can rename the group, add or remove members, grant or revoke admin status, and review recent group activity. Members can leave. The last admin must promote another before leaving or stepping down.
-6. Request limits and WebSocket size limits are process-local safeguards. This project has no real end-to-end encryption, MFA, durable distributed rate limiting, verified identity, or formal security audit. Keep it local until these are addressed for any real-world use.
+6. Request limits and WebSocket size limits are process-local safeguards. This project has no real end-to-end encryption, MFA, durable distributed rate limiting, verified identity, or formal security audit. The hosted assignment demo is unsuitable for real-world private communication.
 7. Read means the conversation is active in a focused, visible browser tab, not proof a human read every message. Delivery means an authenticated socket is connected, not a separate device-level acknowledgment.
 8. SQLite and the in-memory hub target a small demo, not a high-traffic service. Conversation summaries use simple per-conversation queries for readability.
 9. The layout is inspired by Signal desktop/mobile; it is not a pixel-perfect replica of every Signal version. Reference: [official Signal desktop screenshots](https://signal.org/download/). No Signal application source was copied.

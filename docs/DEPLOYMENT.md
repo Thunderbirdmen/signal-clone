@@ -1,6 +1,8 @@
 # Publish the project
 
-The source is published at [Thunderbirdmen/signal-clone](https://github.com/Thunderbirdmen/signal-clone). The submission also needs an HTTPS demo URL. Localhost is not a hosted submission.
+The source is published at [Thunderbirdmen/signal-clone](https://github.com/Thunderbirdmen/signal-clone). The hosted demo is [tanishq-signal-clone.vercel.app](https://tanishq-signal-clone.vercel.app), backed by [signal-clone-api-u17l.onrender.com](https://signal-clone-api-u17l.onrender.com/health).
+
+The current backend uses Render's **free** instance and `./data/signal.db` on its ephemeral filesystem. It may take 50 seconds or more to wake after inactivity. Messages, sessions, accounts, and attachments can be lost when Render restarts or redeploys the instance. The user chose this temporary demo option; it does not provide durable hosted storage. The Vercel frontend was uploaded from the `frontend` folder with a build-time `.env.production` pointing to the Render API. Its current deployment is not connected to GitHub for automatic frontend redeploys.
 
 ## 1. GitHub
 
@@ -10,7 +12,7 @@ Check `.gitignore` before staging. Keep `.venv`, `node_modules`, `.next`, runtim
 
 ## 2. FastAPI backend on Render
 
-Create a **Web Service** from that repository:
+For durable storage, upgrade the existing Render service to a paid instance and add a persistent disk. The original durable-service settings are:
 
 | Setting | Value |
 | --- | --- |
@@ -26,7 +28,7 @@ Create a **Web Service** from that repository:
 | ENABLE_DEMO_LOGIN | `true` for the public assignment demo only |
 | FRONTEND_ORIGINS | Your exact final frontend origin, e.g. `https://your-signal.vercel.app` |
 
-Attach a **persistent disk** mounted at `/var/data`. A Render persistent disk requires a paid service. Review the provider's current price before choosing it. Free Render instances have ephemeral filesystems and lose SQLite changes when restarted/redeployed, so that option does **not** satisfy durable hosted storage.
+Attach a **persistent disk** mounted at `/var/data`. A Render persistent disk requires a paid service. The provider showed $7/month for the smallest paid instance and $0.25/GB/month for disk when this demo was deployed. Free Render instances have ephemeral filesystems and lose SQLite changes when restarted/redeployed, so that option does **not** satisfy durable hosted storage.
 
 This configuration exposes seeded demo accounts through a known code. Treat all hosted demo content as public test data; do not use real messages or personal information. New-account registration also uses the fixed code and does not verify username or phone ownership.
 
@@ -36,7 +38,7 @@ After deployment, visit `https://YOUR_BACKEND.onrender.com/health` and `/docs`.
 
 ## 3. Next.js frontend on Vercel
 
-Import the same repository, use the Next.js preset, and set root directory to `frontend`.
+For future Git-connected deployments, import the same repository, use the Next.js preset, and set root directory to `frontend`. The current hosted frontend was uploaded with Vercel Drop because repository integration was not connected.
 
 Set this environment variable before building:
 
@@ -56,7 +58,7 @@ Use `npm run build` and Vercel's default Next.js output handling. After receivin
 4. Create a group, send a message, rename it, promote/demote an admin, and add/remove a member. Set the 10-second timer, send a message and confirm it disappears.
 5. Edit a sent text message; delete a message for yourself and one for everyone. Confirm another account sees the tombstone and can no longer download a deleted attachment.
 6. Refresh both browsers; confirm sessions and history persist.
-7. Restart the backend through your provider; confirm messages survive.
+7. If you upgrade to a persistent disk, restart the backend through your provider and confirm messages survive. The current free demo does not pass this durability check.
 8. Check desktop and mobile layouts, browser console, and API/WebSocket network requests.
 9. Put the actual public repository and stable frontend URLs in your submission.
 
