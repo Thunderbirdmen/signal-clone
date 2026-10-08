@@ -2,7 +2,7 @@
 
 The source is published at [Thunderbirdmen/signal-clone](https://github.com/Thunderbirdmen/signal-clone). The hosted demo is [tanishq-signal-clone.vercel.app](https://tanishq-signal-clone.vercel.app), backed by [signal-clone-api-u17l.onrender.com](https://signal-clone-api-u17l.onrender.com/health).
 
-The current backend uses Render's **free** instance and `./data/signal.db` on its ephemeral filesystem. It may take 50 seconds or more to wake after inactivity. Messages, sessions, accounts, and attachments can be lost when Render restarts or redeploys the instance. The user chose this temporary demo option; it does not provide durable hosted storage. The Vercel frontend was uploaded from the `frontend` folder with a build-time `.env.production` pointing to the Render API. Its current deployment is not connected to GitHub for automatic frontend redeploys.
+The current backend uses Render's **free** instance and `./data/signal.db` on its ephemeral filesystem. It may take 50 seconds or more to wake after inactivity. Messages, sessions, accounts, and attachments can be lost when Render restarts or redeploys the instance. The user chose this temporary demo option; it does not provide durable hosted storage. The Vercel frontend is connected to this GitHub repository with root directory `frontend` and a production `NEXT_PUBLIC_API_URL` environment variable pointing to the Render API.
 
 ## 1. GitHub
 
@@ -24,13 +24,12 @@ For durable storage, upgrade the existing Render service to a paid instance and 
 | PYTHON_VERSION | `3.13.5` |
 | DATABASE_PATH | `/var/data/signal.db` |
 | SEED_DEMO | `true` |
-| DEMO_OTP | `123456` |
 | ENABLE_DEMO_LOGIN | `true` for the public assignment demo only |
 | FRONTEND_ORIGINS | Your exact final frontend origin, e.g. `https://your-signal.vercel.app` |
 
 Attach a **persistent disk** mounted at `/var/data`. A Render persistent disk requires a paid service. The provider showed $7/month for the smallest paid instance and $0.25/GB/month for disk when this demo was deployed. Free Render instances have ephemeral filesystems and lose SQLite changes when restarted/redeployed, so that option does **not** satisfy durable hosted storage.
 
-This configuration exposes seeded demo accounts through a known code. Treat all hosted demo content as public test data; do not use real messages or personal information. New-account registration also uses the fixed code and does not verify username or phone ownership.
+This configuration exposes seeded sample accounts through `/auth/demo`. Treat all hosted demo content as public test data; do not use real messages or personal information. New-account registration uses a password but does not verify username or phone ownership.
 
 Use one backend instance. Do not scale horizontally or add workers with the current in-memory WebSocket hub.
 
@@ -38,7 +37,7 @@ After deployment, visit `https://YOUR_BACKEND.onrender.com/health` and `/docs`.
 
 ## 3. Next.js frontend on Vercel
 
-For future Git-connected deployments, import the same repository, use the Next.js preset, and set root directory to `frontend`. The current hosted frontend was uploaded with Vercel Drop because repository integration was not connected.
+The existing Vercel project uses the Next.js preset, root directory `frontend`, and GitHub integration. Commits to `main` trigger frontend deployments. Set `NEXT_PUBLIC_API_URL` to the Render API URL for any new Vercel project.
 
 Set this environment variable before building:
 

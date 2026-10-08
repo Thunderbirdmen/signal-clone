@@ -4,7 +4,7 @@ A Signal-inspired messaging application for the fullstack recruitment assignment
 
 **Live demo:** [tanishq-signal-clone.vercel.app](https://tanishq-signal-clone.vercel.app) · [API health](https://signal-clone-api-u17l.onrender.com/health). The backend runs on Render's free tier: it can take around a minute to wake after inactivity, and its SQLite data can be erased when the service restarts or redeploys. Use only the seeded demo accounts and test data.
 
-> Educational demo, not an official Signal client. Verification uses the fixed code `123456`. Messages are stored as plaintext; real end-to-end encryption is not implemented. Do not use it for private communication.
+> Educational demo, not an official Signal client. Password sign-in and account creation are separate; sample accounts use an explicit public demo entry. Messages are stored as plaintext; real end-to-end encryption is not implemented. Do not use it for private communication.
 
 ![Desktop conversation preview](docs/desktop-features.jpg)
 
@@ -39,15 +39,15 @@ If your Python installation lacks wheels for an optional `uvicorn[standard]` dep
 
 ### Demo accounts
 
-| Username | Display name | Code |
-| --- | --- | --- |
-| alex | Alex Morgan | 123456 |
-| maya | Maya Chen | 123456 |
-| jordan | Jordan Lee | 123456 |
-| sam | Sam Rivera | 123456 |
-| riley | Riley Park | 123456 |
+| Username | Display name |
+| --- | --- |
+| alex | Alex Morgan |
+| maya | Maya Chen |
+| jordan | Jordan Lee |
+| sam | Sam Rivera |
+| riley | Riley Park |
 
-The login page has shortcuts for Alex, Maya, and Jordan. Register a new account by entering an unused username, a display name, an avatar, a password of at least 12 characters, and the demo code. Existing password-protected accounts sign in with their password. Existing accounts retain their stored profile; edit it in Settings.
+The sign-in page has sample-account shortcuts for Alex, Maya, and Jordan. Create an account with an unused username, a display name, an avatar, and a password of at least 12 characters. Registered accounts sign in with their password. Existing accounts retain their stored profile; edit it in Settings.
 
 For a two-user demonstration, use a normal window for Alex and an incognito/private window for Maya. On your development machine you can also use `localhost:3000` and `127.0.0.1:3000` as separate storage origins. Two tabs on the same origin share local storage, so separate profiles/private windows are preferred.
 
@@ -61,7 +61,7 @@ The named `signal-data` volume persists SQLite across container restarts. These 
 
 ## Features
 
-- Mock registration/login, seven-day persistent sessions, logout, name and emoji avatar editing.
+- Separate password sign-in and account creation, public sample-account entry, seven-day sessions, logout, name and emoji avatar editing.
 - Contacts, search by name/username, recent-first conversation list, unread counts and previews.
 - Persistent direct messages with optimistic sending, retry on failure, and deduplication.
 - Live delivery/read receipts, typing indicators, online/last-seen presence.
@@ -129,11 +129,13 @@ Foreign keys are enabled on **every** connection. Composite keys stop duplicate 
 
 ## API overview
 
-All routes except `/auth/login` and `/health` require `Authorization: Bearer <token>`.
+All routes except `/auth/login`, `/auth/register`, `/auth/demo`, and `/health` require `Authorization: Bearer <token>`.
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| POST | /auth/login | Password login/signup; mock code for signup and seeded demo accounts |
+| POST | /auth/login | Password sign-in for an existing account |
+| POST | /auth/register | Create a password-protected account |
+| POST | /auth/demo | Enter a seeded public sample account when enabled |
 | POST | /auth/logout | Revoke current session and close its sockets |
 | GET / PATCH | /me | Read/update profile |
 | GET / POST | /contacts | List/add a registered contact |
@@ -167,8 +169,7 @@ Backend variables are loaded from `.env` when started with `--env-file .env`; pr
 | FRONTEND_ORIGINS | http://localhost:3000,http://127.0.0.1:3000 | Exact comma-separated allowed origins, no trailing slash |
 | DATABASE_PATH | backend/data/signal.db | Use a persistent disk path when hosted |
 | SEED_DEMO | true | Seeds only an empty users table |
-| DEMO_OTP | 123456 | Fixed mock code; UI demo buttons assume the default |
-| ENABLE_DEMO_LOGIN | true | Allows only seeded demo accounts to use the fixed code; set false to disable demo login |
+| ENABLE_DEMO_LOGIN | true | Allows only seeded sample accounts through `/auth/demo`; set false to disable public demo entry |
 | NEXT_PUBLIC_API_URL | http://localhost:8000 | Frontend **build-time** variable; redeploy after changing |
 
 ## Validation
@@ -189,7 +190,7 @@ See [verification notes](docs/VERIFICATION.md), [deployment guide](docs/DEPLOYME
 
 ## Assumptions and tradeoffs
 
-1. Username/phone ownership is deliberately **not verified**. Seeded demo accounts can use the known demo code while `ENABLE_DEMO_LOGIN=true`. New accounts require a 12-character password, stored as a salted PBKDF2 hash, but signup still uses a fixed verification code. This is an assignment mock, not production authentication.
+1. Username/phone ownership is deliberately **not verified**. Seeded accounts are publicly accessible while `ENABLE_DEMO_LOGIN=true`. New accounts require a 12-character password stored as a salted PBKDF2 hash. Account recovery and real identity verification are not implemented, so this is not production authentication.
 2. Sessions use random bearer tokens; only SHA-256 hashes are stored in SQLite. The browser stores the token in localStorage for simple persistence. Production should use an appropriate secure cookie/session design and real identity verification.
 3. Emoji avatars satisfy profile avatar selection without file-upload storage. Profile photos are not implemented.
 4. New group members can read the group's existing history. Removed members cannot fetch/send/read or receive new chat events. Original receipt recipients are retained; removing a member does not rewrite historical delivery status.

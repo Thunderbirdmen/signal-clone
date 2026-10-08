@@ -83,10 +83,18 @@ app.add_middleware(
 
 class Login(BaseModel):
     username: str = Field(min_length=3, max_length=64)
-    otp: str
-    display_name: str | None = Field(default=None, max_length=60)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class Register(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    display_name: str = Field(min_length=1, max_length=60)
     avatar: str = "💙"
-    password: str | None = Field(default=None, max_length=128)
+    password: str = Field(min_length=12, max_length=128)
+
+
+class DemoLogin(BaseModel):
+    username: str
 
 
 AVATARS = ["💙", "🌿", "🌸", "🏔️", "☀️", "🎨", "🚀", "🐱", "🌊", "🎧", "🦊", "🌻"]
@@ -185,7 +193,10 @@ def audience(db, cid):
 
 def public_user(row):
     data = dict(row)
-    result = {key: data[key] for key in ("id", "username", "display_name", "avatar", "last_seen")}
+    result = {
+        key: data[key]
+        for key in ("id", "username", "display_name", "avatar", "last_seen")
+    }
     if "role" in data:
         result["role"] = data["role"]
     result["online"] = hub.online(data["id"])
@@ -201,7 +212,10 @@ def audit(db, cid, actor, action, target=None, detail=None):
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
-    if request.headers.get("content-length", "0").isdigit() and int(request.headers.get("content-length", "0")) > 15_000_000:
+    if (
+        request.headers.get("content-length", "0").isdigit()
+        and int(request.headers.get("content-length", "0")) > 15_000_000
+    ):
         return Response(status_code=413, content="Request too large")
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
@@ -219,52 +233,82 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/auth/login")
-def login(data: Login, request: Request):
-    username = data.username.strip().lower()
+def valid_username(value: str) -> str:
+    username = value.strip().lower()
     if not re.fullmatch(r"[a-z0-9_+.-]{3,64}", username):
         raise HTTPException(
             422,
             "Use 3–64 letters, numbers, _, ., + or - for your username or phone number.",
         )
+    return username
+
+
+def issue_session(db, user):
+    token = secrets.token_urlsafe(32)
+    db.execute("DELETE FROM sessions WHERE expires_at<=?", (now(),))
+    db.execute(
+        "INSERT INTO sessions VALUES (?,?,?)",
+        (
+            digest(token),
+            user["id"],
+            (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+        ),
+    )
+    return {"token": token, "user": public_user(user)}
+
+
+@app.post("/auth/login")
+def login(data: Login, request: Request):
+    username = valid_username(data.username)
     rate_limit(f"auth-ip:{request.client.host if request.client else 'unknown'}", 30)
     rate_limit(f"auth-user:{username}", 15)
     with connect() as db:
         user = db.execute(
             "SELECT * FROM users WHERE username=?", (username,)
         ).fetchone()
-        if user and user["password_hash"]:
-            if not data.password or not verify_password(data.password, user["password_hash"]):
-                raise HTTPException(401, "Incorrect credentials.")
-        elif user:
-            if not demo_enabled() or username not in {"alex", "maya", "jordan", "sam", "riley"} or not secrets.compare_digest(data.otp, os.getenv("DEMO_OTP", "123456")):
-                raise HTTPException(401, "Incorrect credentials.")
-        else:
-            if not data.password or len(data.password) < 12:
-                raise HTTPException(422, "New accounts require a password of at least 12 characters.")
-            if not secrets.compare_digest(data.otp, os.getenv("DEMO_OTP", "123456")):
-                raise HTTPException(401, "Incorrect verification code.")
-            display = (data.display_name or username).strip()
-            if not display or data.avatar not in AVATARS:
-                raise HTTPException(
-                    422, "Choose a name and one of the profile avatars."
-                )
-            uid = db.execute(
-                "INSERT INTO users(username,display_name,avatar,last_seen,password_hash) VALUES (?,?,?,?,?)",
-                (username, display, data.avatar, now(), hash_password(data.password)),
-            ).lastrowid
-            user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
-        token = secrets.token_urlsafe(32)
-        db.execute("DELETE FROM sessions WHERE expires_at<=?", (now(),))
-        db.execute(
-            "INSERT INTO sessions VALUES (?,?,?)",
-            (
-                digest(token),
-                user["id"],
-                (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
-            ),
-        )
-    return {"token": token, "user": public_user(user)}
+        if (
+            not user
+            or not user["password_hash"]
+            or not verify_password(data.password, user["password_hash"])
+        ):
+            raise HTTPException(401, "Incorrect username or password.")
+        return issue_session(db, user)
+
+
+@app.post("/auth/register")
+def register(data: Register, request: Request):
+    username = valid_username(data.username)
+    rate_limit(
+        f"register-ip:{request.client.host if request.client else 'unknown'}", 10
+    )
+    rate_limit(f"register-user:{username}", 5)
+    display = data.display_name.strip()
+    if not display or data.avatar not in AVATARS:
+        raise HTTPException(422, "Choose a display name and profile avatar.")
+    with connect() as db:
+        if db.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
+            raise HTTPException(409, "That username is already taken.")
+        uid = db.execute(
+            "INSERT INTO users(username,display_name,avatar,last_seen,password_hash) VALUES (?,?,?,?,?)",
+            (username, display, data.avatar, now(), hash_password(data.password)),
+        ).lastrowid
+        user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        return issue_session(db, user)
+
+
+@app.post("/auth/demo")
+def demo_login(data: DemoLogin, request: Request):
+    username = data.username.strip().lower()
+    rate_limit(f"demo-ip:{request.client.host if request.client else 'unknown'}", 30)
+    if not demo_enabled() or username not in {"alex", "maya", "jordan", "sam", "riley"}:
+        raise HTTPException(401, "Demo access is unavailable.")
+    with connect() as db:
+        user = db.execute(
+            "SELECT * FROM users WHERE username=?", (username,)
+        ).fetchone()
+        if not user or user["password_hash"]:
+            raise HTTPException(401, "Demo access is unavailable.")
+        return issue_session(db, user)
 
 
 @app.post("/auth/logout")
@@ -469,7 +513,9 @@ async def rename_group(cid: int, data: GroupNameInput, user=Depends(current_user
     rate_limit(f"group:{user['id']}", 30)
     with connect() as db:
         member(db, cid, user["id"], admin=True)
-        row = db.execute("SELECT kind,name FROM conversations WHERE id=?", (cid,)).fetchone()
+        row = db.execute(
+            "SELECT kind,name FROM conversations WHERE id=?", (cid,)
+        ).fetchone()
         if row["kind"] != "group":
             raise HTTPException(422, "Only groups can be renamed.")
         if row["name"] != name:
@@ -487,15 +533,33 @@ async def set_role(cid: int, uid: int, data: RoleInput, user=Depends(current_use
     rate_limit(f"group:{user['id']}", 30)
     with connect() as db:
         member(db, cid, user["id"], admin=True)
-        kind = db.execute("SELECT kind FROM conversations WHERE id=?", (cid,)).fetchone()[0]
+        kind = db.execute(
+            "SELECT kind FROM conversations WHERE id=?", (cid,)
+        ).fetchone()[0]
         if kind != "group":
             raise HTTPException(422, "Only groups have admins.")
         target = member(db, cid, uid)
         if target["role"] != data.role:
-            if target["role"] == "admin" and db.execute("SELECT count(*) FROM members WHERE conversation_id=? AND role='admin'", (cid,)).fetchone()[0] <= 1:
+            if (
+                target["role"] == "admin"
+                and db.execute(
+                    "SELECT count(*) FROM members WHERE conversation_id=? AND role='admin'",
+                    (cid,),
+                ).fetchone()[0]
+                <= 1
+            ):
                 raise HTTPException(422, "A group needs at least one admin.")
-            db.execute("UPDATE members SET role=? WHERE conversation_id=? AND user_id=?", (data.role, cid, uid))
-            audit(db, cid, user["id"], "admin_promoted" if data.role == "admin" else "admin_demoted", uid)
+            db.execute(
+                "UPDATE members SET role=? WHERE conversation_id=? AND user_id=?",
+                (data.role, cid, uid),
+            )
+            audit(
+                db,
+                cid,
+                user["id"],
+                "admin_promoted" if data.role == "admin" else "admin_demoted",
+                uid,
+            )
         ids = audience(db, cid)
     await hub.emit(ids, {"type": "sync", "conversation_id": cid})
     return {"ok": True}
@@ -506,13 +570,25 @@ async def leave_group(cid: int, user=Depends(current_user)):
     rate_limit(f"group:{user['id']}", 30)
     with connect() as db:
         own = member(db, cid, user["id"])
-        kind = db.execute("SELECT kind FROM conversations WHERE id=?", (cid,)).fetchone()[0]
+        kind = db.execute(
+            "SELECT kind FROM conversations WHERE id=?", (cid,)
+        ).fetchone()[0]
         if kind != "group":
             raise HTTPException(422, "Only groups can be left.")
-        if own["role"] == "admin" and db.execute("SELECT count(*) FROM members WHERE conversation_id=? AND role='admin'", (cid,)).fetchone()[0] <= 1:
+        if (
+            own["role"] == "admin"
+            and db.execute(
+                "SELECT count(*) FROM members WHERE conversation_id=? AND role='admin'",
+                (cid,),
+            ).fetchone()[0]
+            <= 1
+        ):
             raise HTTPException(422, "Promote another admin before leaving.")
         ids = audience(db, cid)
-        db.execute("DELETE FROM members WHERE conversation_id=? AND user_id=?", (cid, user["id"]))
+        db.execute(
+            "DELETE FROM members WHERE conversation_id=? AND user_id=?",
+            (cid, user["id"]),
+        )
         audit(db, cid, user["id"], "member_left", user["id"])
     await hub.emit(ids, {"type": "sync", "conversation_id": cid})
     return {"ok": True}
@@ -522,12 +598,16 @@ async def leave_group(cid: int, user=Depends(current_user)):
 def group_activity(cid: int, user=Depends(current_user)):
     with connect() as db:
         member(db, cid, user["id"])
-        return [dict(row) for row in db.execute(
-            """SELECT a.action,a.detail,a.created_at,actor.display_name actor_name,target.display_name target_name
+        return [
+            dict(row)
+            for row in db.execute(
+                """SELECT a.action,a.detail,a.created_at,actor.display_name actor_name,target.display_name target_name
             FROM audit_logs a JOIN users actor ON actor.id=a.actor_id
             LEFT JOIN users target ON target.id=a.target_user_id
-            WHERE a.conversation_id=? ORDER BY a.id DESC LIMIT 20""", (cid,)
-        )]
+            WHERE a.conversation_id=? ORDER BY a.id DESC LIMIT 20""",
+                (cid,),
+            )
+        ]
 
 
 @app.get("/conversations/{cid}/messages")
@@ -666,7 +746,9 @@ async def send_message(cid: int, data: MessageInput, user=Depends(current_user))
 
 
 @app.patch("/conversations/{cid}/messages/{mid}")
-async def edit_message(cid: int, mid: int, data: EditMessageInput, user=Depends(current_user)):
+async def edit_message(
+    cid: int, mid: int, data: EditMessageInput, user=Depends(current_user)
+):
     body = data.body.strip()
     if not body:
         raise HTTPException(422, "Message cannot be empty.")
@@ -681,18 +763,30 @@ async def edit_message(cid: int, mid: int, data: EditMessageInput, user=Depends(
             raise HTTPException(404, "Message no longer available.")
         if row["sender_id"] != user["id"]:
             raise HTTPException(403, "You can edit only your own messages.")
-        if db.execute("SELECT 1 FROM hidden_messages WHERE message_id=? AND user_id=?", (mid, user["id"])).fetchone():
+        if db.execute(
+            "SELECT 1 FROM hidden_messages WHERE message_id=? AND user_id=?",
+            (mid, user["id"]),
+        ).fetchone():
             raise HTTPException(404, "Message no longer available.")
-        if db.execute("SELECT 1 FROM attachments WHERE message_id=?", (mid,)).fetchone():
+        if db.execute(
+            "SELECT 1 FROM attachments WHERE message_id=?", (mid,)
+        ).fetchone():
             raise HTTPException(422, "Attachment messages cannot be edited.")
-        db.execute("UPDATE messages SET body=?,edited_at=? WHERE id=?", (body, now(), mid))
+        db.execute(
+            "UPDATE messages SET body=?,edited_at=? WHERE id=?", (body, now(), mid)
+        )
         ids = audience(db, cid)
     await hub.emit(ids, {"type": "sync", "conversation_id": cid, "message_id": mid})
     return {"ok": True}
 
 
 @app.delete("/conversations/{cid}/messages/{mid}")
-async def delete_message(cid: int, mid: int, scope: str = Query("me", pattern="^(me|everyone)$"), user=Depends(current_user)):
+async def delete_message(
+    cid: int,
+    mid: int,
+    scope: str = Query("me", pattern="^(me|everyone)$"),
+    user=Depends(current_user),
+):
     rate_limit(f"message-action:{user['id']}", 60)
     with connect() as db:
         member(db, cid, user["id"])
@@ -704,17 +798,39 @@ async def delete_message(cid: int, mid: int, scope: str = Query("me", pattern="^
             raise HTTPException(404, "Message no longer available.")
         if scope == "everyone":
             if row["sender_id"] != user["id"]:
-                raise HTTPException(403, "You can delete only your own messages for everyone.")
+                raise HTTPException(
+                    403, "You can delete only your own messages for everyone."
+                )
             if not row["deleted_at"]:
-                db.execute("UPDATE messages SET body='This message was deleted',deleted_at=? WHERE id=?", (now(), mid))
+                db.execute(
+                    "UPDATE messages SET body='This message was deleted',deleted_at=? WHERE id=?",
+                    (now(), mid),
+                )
                 db.execute("DELETE FROM attachments WHERE message_id=?", (mid,))
                 db.execute("DELETE FROM reactions WHERE message_id=?", (mid,))
-                db.execute("UPDATE receipts SET read_at=COALESCE(read_at,?) WHERE message_id=?", (now(), mid))
+                db.execute(
+                    "UPDATE receipts SET read_at=COALESCE(read_at,?) WHERE message_id=?",
+                    (now(), mid),
+                )
             ids = audience(db, cid)
         else:
-            db.execute("INSERT OR IGNORE INTO hidden_messages(message_id,user_id) VALUES (?,?)", (mid, user["id"]))
+            db.execute(
+                "INSERT OR IGNORE INTO hidden_messages(message_id,user_id) VALUES (?,?)",
+                (mid, user["id"]),
+            )
             ids = [user["id"]]
-    await hub.emit(ids, {"type": "sync", "conversation_id": cid, **({"message_id": mid, "tombstoned_id": mid} if scope == "everyone" else {"deleted_ids": [mid]})})
+    await hub.emit(
+        ids,
+        {
+            "type": "sync",
+            "conversation_id": cid,
+            **(
+                {"message_id": mid, "tombstoned_id": mid}
+                if scope == "everyone"
+                else {"deleted_ids": [mid]}
+            ),
+        },
+    )
     return {"ok": True}
 
 

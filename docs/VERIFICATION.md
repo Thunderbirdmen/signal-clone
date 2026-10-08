@@ -6,7 +6,7 @@ Validated locally on 8 October 2026 with Node.js 25.5.0, Python 3.13, Next.js 16
 
 - Next.js production build: passed.
 - TypeScript typecheck: passed.
-- Python integration suite: **20 passed** after message edit and deletion changes.
+- Python integration suite: **21 passed** after the password authentication and registration changes.
 - Python unused-import check: passed; Python and frontend source formatted.
 - npm installation audit: no vulnerabilities reported for the installed dependency tree.
 

@@ -10,7 +10,6 @@ from app.realtime import hub
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("SEED_DEMO", "true")
-    monkeypatch.setenv("DEMO_OTP", "123456")
     reset_limits()
     hub.clients.clear()
     with TestClient(app) as client:
@@ -18,7 +17,22 @@ def client(tmp_path, monkeypatch):
 
 
 def login(client, name):
-    response = client.post("/auth/login", json={"username": name, "otp": "123456", "password": "test-password-2026" if name not in {"alex", "maya", "jordan", "sam", "riley"} else None})
+    if name in {"alex", "maya", "jordan", "sam", "riley"}:
+        response = client.post("/auth/demo", json={"username": name})
+    else:
+        response = client.post(
+            "/auth/register",
+            json={
+                "username": name,
+                "display_name": name,
+                "avatar": "💙",
+                "password": "test-password-2026",
+            },
+        )
+        if response.status_code == 409:
+            response = client.post(
+                "/auth/login", json={"username": name, "password": "test-password-2026"}
+            )
     assert response.status_code == 200, response.text
     data = response.json()
     return {"Authorization": "Bearer " + data["token"]}, data
@@ -35,7 +49,8 @@ def send(client, headers, cid, body="Hello", client_id="test", reply=None):
 def test_registration_persistence_and_logout(client):
     assert (
         client.post(
-            "/auth/login", json={"username": "newuser", "otp": "wrong", "password": "test-password-2026"}
+            "/auth/login",
+            json={"username": "newuser", "password": "test-password-2026"},
         ).status_code
         == 401
     )
@@ -51,6 +66,45 @@ def test_registration_persistence_and_logout(client):
     assert client.post("/auth/logout", headers=h).status_code == 200
     assert client.get("/me", headers=h).status_code == 401
     assert client.get("/me", headers=h2).status_code == 200
+
+
+def test_separate_password_and_demo_authentication(client):
+    assert (
+        client.post(
+            "/auth/login", json={"username": "alex", "password": "123456"}
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/auth/login",
+            json={"username": "missing", "password": "a-long-password-2026"},
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/auth/register",
+            json={"username": "shortpass", "display_name": "New", "password": "short"},
+        ).status_code
+        == 422
+    )
+    _, registered = login(client, "realaccount")
+    assert (
+        client.post(
+            "/auth/register",
+            json={
+                "username": "realaccount",
+                "display_name": "Again",
+                "password": "test-password-2026",
+            },
+        ).status_code
+        == 409
+    )
+    assert (
+        client.post("/auth/demo", json={"username": "realaccount"}).status_code == 401
+    )
+    assert login(client, "realaccount")[1]["user"]["id"] == registered["user"]["id"]
 
 
 def test_contacts_and_unique_direct_conversations(client):
@@ -175,20 +229,53 @@ def test_group_admin_permissions_and_removed_members(client):
 def test_group_rename_roles_leave_and_audit(client):
     alex, a = login(client, "alex")
     maya, m = login(client, "maya")
-    group = client.post("/conversations/group", headers=alex, json={"name": "First", "member_ids": [m["user"]["id"]]})
+    group = client.post(
+        "/conversations/group",
+        headers=alex,
+        json={"name": "First", "member_ids": [m["user"]["id"]]},
+    )
     cid = group.json()["id"]
     name_url = f"/conversations/{cid}/name"
     role_url = f"/conversations/{cid}/members/{m['user']['id']}/role"
-    assert client.patch(name_url, headers=maya, json={"name": "Nope"}).status_code == 403
-    assert client.patch(name_url, headers=alex, json={"name": "  Final name  "}).status_code == 200
-    assert next(c for c in client.get("/conversations", headers=maya).json() if c["id"] == cid)["name"] == "Final name"
-    assert client.patch(f"/conversations/{cid}/members/{a['user']['id']}/role", headers=alex, json={"role": "member"}).status_code == 422
-    assert client.patch(role_url, headers=maya, json={"role": "admin"}).status_code == 403
-    assert client.patch(role_url, headers=alex, json={"role": "admin"}).status_code == 200
+    assert (
+        client.patch(name_url, headers=maya, json={"name": "Nope"}).status_code == 403
+    )
+    assert (
+        client.patch(
+            name_url, headers=alex, json={"name": "  Final name  "}
+        ).status_code
+        == 200
+    )
+    assert (
+        next(
+            c
+            for c in client.get("/conversations", headers=maya).json()
+            if c["id"] == cid
+        )["name"]
+        == "Final name"
+    )
+    assert (
+        client.patch(
+            f"/conversations/{cid}/members/{a['user']['id']}/role",
+            headers=alex,
+            json={"role": "member"},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.patch(role_url, headers=maya, json={"role": "admin"}).status_code == 403
+    )
+    assert (
+        client.patch(role_url, headers=alex, json={"role": "admin"}).status_code == 200
+    )
     assert client.delete(f"/conversations/{cid}/leave", headers=alex).status_code == 200
     assert client.get(f"/conversations/{cid}/audit", headers=alex).status_code == 403
     activity = client.get(f"/conversations/{cid}/audit", headers=maya).json()
-    assert [item["action"] for item in activity[:3]] == ["member_left", "admin_promoted", "group_renamed"]
+    assert [item["action"] for item in activity[:3]] == [
+        "member_left",
+        "admin_promoted",
+        "group_renamed",
+    ]
     assert client.delete(f"/conversations/{cid}/leave", headers=maya).status_code == 422
 
 
@@ -199,12 +286,20 @@ def test_password_privacy_demo_toggle_and_headers(client, monkeypatch):
     assert "password_hash" not in response.json()
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["x-content-type-options"] == "nosniff"
-    assert client.post("/auth/login", json={"username": "secureuser", "otp": "123456", "password": "incorrect-passphrase"}).status_code == 401
+    assert (
+        client.post(
+            "/auth/login",
+            json={"username": "secureuser", "password": "incorrect-passphrase"},
+        ).status_code
+        == 401
+    )
     with db.connect() as conn:
-        stored = conn.execute("SELECT password_hash FROM users WHERE username='secureuser'").fetchone()[0]
+        stored = conn.execute(
+            "SELECT password_hash FROM users WHERE username='secureuser'"
+        ).fetchone()[0]
     assert stored.startswith("pbkdf2_sha256$") and "test-password-2026" not in stored
     monkeypatch.setenv("ENABLE_DEMO_LOGIN", "false")
-    assert client.post("/auth/login", json={"username": "alex", "otp": "123456"}).status_code == 401
+    assert client.post("/auth/demo", json={"username": "alex"}).status_code == 401
     assert login(client, "secureuser")[1]["user"]["id"] == data["user"]["id"]
 
 

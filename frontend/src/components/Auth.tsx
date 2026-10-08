@@ -1,33 +1,43 @@
 import { useState } from "react";
-import { ArrowRight, LockKeyhole } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { api, post, User, AVATARS } from "@/lib/api";
 import { SignalLogo } from "./ui";
-export default function Auth({
-  onLogin,
-}: {
-  onLogin: (token: string, user: User) => void;
-}) {
+
+type Mode = "signin" | "signup";
+
+export default function Auth({ onLogin }: { onLogin: (token: string, user: User) => void }) {
+  const [mode, setMode] = useState<Mode>("signin");
   const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("💙");
-  const [otp, setOtp] = useState("123456");
   const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  async function login(demo?: string) {
+
+  function changeMode(next: Mode) {
+    setMode(next);
+    setError("");
+    setPassword("");
+    setConfirmation("");
+    setShowPassword(false);
+  }
+
+  async function submit() {
+    if (mode === "signup" && password !== confirmation) {
+      setError("Passwords do not match.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       const result = await api<{ token: string; user: User }>(
-        "/auth/login",
+        mode === "signin" ? "/auth/login" : "/auth/register",
         null,
-        post({
-          username: demo || username,
-          display_name: name || undefined,
-          avatar,
-          otp: demo ? "123456" : otp,
-          password: demo ? undefined : password || undefined,
-        }),
+        post(mode === "signin"
+          ? { username: username.trim(), password }
+          : { username: username.trim(), display_name: name.trim(), avatar, password }),
       );
       onLogin(result.token, result.user);
     } catch (e) {
@@ -36,111 +46,69 @@ export default function Auth({
       setBusy(false);
     }
   }
+
+  async function enterDemo(username: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api<{ token: string; user: User }>(
+        "/auth/demo", null, post({ username }),
+      );
+      onLogin(result.token, result.user);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="auth-page">
-      <div className="auth-card">
-        <SignalLogo />
-        <h1>Say hello to Signal.</h1>
-        <p className="auth-subtitle">
-          A little more connection.
-          <br />A conversation that feels like you.
-        </p>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void login();
-          }}
-        >
-          <label>
-            Username or phone number
-            <input
-              autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              minLength={3}
-              maxLength={64}
-              placeholder="e.g. alex or +919876543210"
-            />
-          </label>
-          <label>
-            Display name <span className="muted">· for new accounts</span>
-            <input
-              value={name}
-              maxLength={60}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="What should we call you?"
-            />
-          </label>
-          <label>Profile avatar</label>
-          <div className="avatar-picker">
-            {AVATARS.map((a) => (
-              <button
-                type="button"
-                aria-label={`Choose ${a} avatar`}
-                aria-pressed={avatar === a}
-                key={a}
-                className={avatar === a ? "chosen" : ""}
-                onClick={() => setAvatar(a)}
-              >
-                {a}
-              </button>
-            ))}
+      <div className="auth-shell">
+        <aside className="auth-intro">
+          <div className="auth-brand"><SignalLogo /><span>Signal Clone</span></div>
+          <div className="auth-intro-copy">
+            <span className="auth-eyebrow">STAY CONNECTED</span>
+            <h1>Conversations that feel close.</h1>
+            <p>Bring your people together with direct messages, groups, replies, and more in one familiar space.</p>
           </div>
-          <label>
-            Password <span className="muted">· required for new accounts</span>
-            <input
-              type="password"
-              autoComplete={name ? "new-password" : "current-password"}
-              minLength={password ? 12 : undefined}
-              maxLength={128}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 12 characters for a new account"
-            />
-          </label>
-          <label>
-            Demo verification code
-            <input
-              inputMode="numeric"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              required
-              placeholder="123456"
-            />
-          </label>
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
-          <button className="primary wide" disabled={busy}>
-            {busy ? "Connecting…" : "Get started"}
-            <ArrowRight size={18} />
-          </button>
-        </form>
-        <div className="demo-divider">
-          <span>or explore a demo account</span>
-        </div>
-        <div className="demo-buttons">
-          <button disabled={busy} onClick={() => void login("alex")}>
-            🌿 Alex
-          </button>
-          <button disabled={busy} onClick={() => void login("maya")}>
-            🌸 Maya
-          </button>
-          <button disabled={busy} onClick={() => void login("jordan")}>
-            🏔️ Jordan
-          </button>
-        </div>
-        <p className="demo-note">
-          <LockKeyhole size={13} /> Recruitment project · Mock verification
-          (123456)
-          <br />
-          Messages in this demo are not end-to-end encrypted.
-        </p>
+          <div className="auth-intro-foot"><ShieldCheck size={18} aria-hidden="true" /><span>Educational project · Not an official Signal app</span></div>
+        </aside>
+        <section className="auth-card" aria-label="Account access">
+          <div className="auth-mobile-brand"><SignalLogo /><span>Signal Clone</span></div>
+          <div className="auth-heading">
+            <span className="auth-eyebrow">YOUR ACCOUNT</span>
+            <h2>{mode === "signin" ? "Welcome back" : "Create an account"}</h2>
+            <p>{mode === "signin" ? "Sign in to continue your conversations." : "Choose a username and a strong password to get started."}</p>
+          </div>
+          <div className="auth-tabs" role="tablist" aria-label="Account action">
+            <button type="button" role="tab" aria-selected={mode === "signin"} className={mode === "signin" ? "active" : ""} onClick={() => changeMode("signin")} disabled={busy}>Sign in</button>
+            <button type="button" role="tab" aria-selected={mode === "signup"} className={mode === "signup" ? "active" : ""} onClick={() => changeMode("signup")} disabled={busy}>Create account</button>
+          </div>
+          <form className="auth-form" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+            {mode === "signup" && <label>Display name<input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={60} placeholder="Your name" disabled={busy} /></label>}
+            <label>Username<input autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required minLength={3} maxLength={64} spellCheck={false} placeholder="Your username" disabled={busy} /></label>
+            <label>Password<span className="auth-password-field">
+              <input type={showPassword ? "text" : "password"} autoComplete={mode === "signin" ? "current-password" : "new-password"} minLength={mode === "signup" ? 12 : 1} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder={mode === "signup" ? "At least 12 characters" : "Enter your password"} disabled={busy} />
+              <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} disabled={busy}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+            </span></label>
+            {mode === "signup" && <><label>Confirm password<input type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={12} maxLength={128} value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required placeholder="Re-enter your password" disabled={busy} /></label>
+              <div className="auth-avatar-label">Choose an avatar</div>
+              <div className="avatar-picker" role="group" aria-label="Profile avatar">{AVATARS.map((a) => <button type="button" aria-label={`Choose ${a} avatar`} aria-pressed={avatar === a} key={a} className={avatar === a ? "chosen" : ""} onClick={() => setAvatar(a)} disabled={busy}>{a}</button>)}</div>
+            </>}
+            {error && <p role="alert" className="error auth-error">{error}</p>}
+            <button className="primary wide auth-submit" disabled={busy}>{busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}{!busy && <ArrowRight size={18} aria-hidden="true" />}</button>
+          </form>
+          <div className="demo-divider"><span>or try a sample account</span></div>
+          <div className="demo-buttons">
+            <button type="button" disabled={busy} onClick={() => void enterDemo("alex")}>🌿 Alex</button>
+            <button type="button" disabled={busy} onClick={() => void enterDemo("maya")}>🌸 Maya</button>
+            <button type="button" disabled={busy} onClick={() => void enterDemo("jordan")}>🏔️ Jordan</button>
+          </div>
+          <p className="demo-note"><LockKeyhole size={14} aria-hidden="true" /> This is a public demo. Messages are not end-to-end encrypted; do not share private information.</p>
+        </section>
       </div>
-      <footer>Built for conversation.</footer>
+      <footer>Signal-inspired recruitment project</footer>
     </main>
   );
 }
