@@ -20,6 +20,12 @@ export default function Messenger() {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setToast(""), 4500);
   }, []);
+  const expireSession = useCallback(() => {
+    localStorage.removeItem("signal-session");
+    setToken(null);
+    setMe(null);
+    notify("Session expired. Please sign in again.");
+  }, [notify]);
   useEffect(() => {
     const saved = localStorage.getItem("signal-session");
     setDarkState(localStorage.getItem("signal-theme") === "dark");
@@ -75,6 +81,7 @@ export default function Messenger() {
           dark={dark}
           setDark={setDark}
           notify={notify}
+          onSessionExpired={expireSession}
         />
       ) : (
         <Auth onLogin={login} />
@@ -102,6 +109,7 @@ function Workspace({
   dark,
   setDark,
   notify,
+  onSessionExpired,
 }: {
   token: string;
   me: User;
@@ -110,8 +118,9 @@ function Workspace({
   dark: boolean;
   setDark: (v: boolean) => void;
   notify: (m: string) => void;
+  onSessionExpired: () => void;
 }) {
-  const state = useMessenger(token, me, notify);
+  const state = useMessenger(token, me, notify, onSessionExpired);
   const [dialog, setDialog] = useState<"new" | "details" | "settings" | null>(
     null,
   );

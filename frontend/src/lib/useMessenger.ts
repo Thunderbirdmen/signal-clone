@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, post, WS, User, Message, Conversation, Upload } from "./api";
+import { api, ApiError, post, WS, User, Message, Conversation, Upload } from "./api";
 export function useMessenger(
   token: string,
   me: User,
   notify: (message: string) => void,
+  onSessionExpired: () => void,
 ) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [contacts, setContacts] = useState<User[]>([]);
@@ -78,11 +79,14 @@ export function useMessenger(
         }
       } while (again.current);
     } catch (e) {
-      if (alive.current) notifyRef.current((e as Error).message);
+      if (alive.current) {
+        if (e instanceof ApiError && e.status === 401) onSessionExpired();
+        else notifyRef.current((e as Error).message);
+      }
     } finally {
       running.current = false;
     }
-  }, [token]);
+  }, [token, onSessionExpired]);
   useEffect(() => {
     alive.current = true;
     let cancelled = false;
