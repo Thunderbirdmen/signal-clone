@@ -1,14 +1,14 @@
 # Verification record
 
-Validated locally on 8 October 2026 with Node.js 25.5.0, Python 3.13, Next.js 16.4.0 and FastAPI 0.143.0.
+Validated locally and against the hosted demo on 8–9 October 2026 with Node.js 25.5.0, Python 3.13, Next.js 16.4.0 and FastAPI 0.143.0.
 
 ## Automated checks
 
 - Next.js production build: passed.
 - TypeScript typecheck: passed.
-- Python integration suite: **21 passed** after the password authentication and registration changes.
+- Python integration suite: **21 passed** after the seeded-contact backend change.
 - Python unused-import check: passed; Python and frontend source formatted.
-- npm installation audit: no vulnerabilities reported for the installed dependency tree.
+- `npm audit --omit=dev --audit-level=high`: **0 reported vulnerabilities** in production dependencies on 9 October. This is a dependency check, not a security audit of the application.
 
 The Python test client currently emits a Starlette warning about future migration from `httpx` to `httpx2`. It does not fail these tests. Dependencies are pinned for the tested environment.
 
@@ -42,6 +42,8 @@ Screenshots: `desktop-features.jpg` and `mobile-features.jpg` in this directory.
 
 - GitHub Actions [Validate application #1](https://github.com/Thunderbirdmen/signal-clone/actions/runs/37826930351) completed successfully on the initial public commit.
 - Dockerfiles and Compose configuration are supplied but were not executed locally because Docker was unavailable.
-- On 9 October 2026, the HTTPS Vercel demo signed in as Alex against the Render API, loaded seeded conversations, sent a message, and showed that message after a page reload. Render reported the CORS configuration redeploy successful. Cross-account hosted WebSocket behavior has not yet been checked.
+- On 9 October 2026, the HTTPS Vercel demo completed the two-step registration with fixed OTP, showed three seeded contacts for the new account, kept the session across reload, logged out, and signed back in with its password. The sign-in and signup layouts were inspected at desktop and 390 × 844 mobile width.
+- A hosted API smoke test registered three accounts, confirmed the seeded contacts, created a direct conversation, sent and read a persistent message, created and renamed a three-member group, and confirmed that logout revoked a session.
+- A separate hosted WebSocket smoke test connected two authenticated accounts with the production frontend Origin. The recipient received the real-time sync event after a message was sent, and REST history contained that same message.
 - The Render free instance has no persistent disk. Persistence across a provider restart is unavailable and should not be claimed for the hosted demo.
 - This is not a load test, a cryptographic security review, or exhaustive automated browser coverage.
