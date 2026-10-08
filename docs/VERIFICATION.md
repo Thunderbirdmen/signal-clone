@@ -40,7 +40,7 @@ Screenshots: `desktop-features.jpg` and `mobile-features.jpg` in this directory.
 - The new group rename, role transfer, leave, audit, password, and header behavior passed API integration tests. The browser checklist above predates these additions; the updated frontend passed TypeScript checking and a production build.
 - Message edit, delete for me, delete for everyone, permissions, quote visibility, and attachment erasure passed API integration tests. The updated frontend passed TypeScript checking and a production build; these new controls have not been included in the earlier browser checklist.
 
-- GitHub Actions workflow is included but has not run remotely.
+- GitHub Actions [Validate application #1](https://github.com/Thunderbirdmen/signal-clone/actions/runs/37826930351) completed successfully on the initial public commit.
 - Dockerfiles and Compose configuration are supplied but were not executed locally because Docker was unavailable.
 - Hosted behavior, HTTPS, provider CORS configuration and persistence across provider restarts must be verified after deployment.
 - This is not a load test, a cryptographic security review, or exhaustive automated browser coverage.

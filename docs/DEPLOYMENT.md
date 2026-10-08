@@ -1,18 +1,10 @@
 # Publish the project
 
-The submission needs a public GitHub repository and an HTTPS demo URL. Localhost is not a hosted submission. Publication needs your GitHub/hosting account access; no public repository or hosted deployment has been created by these instructions.
+The source is published at [Thunderbirdmen/signal-clone](https://github.com/Thunderbirdmen/signal-clone). The submission also needs an HTTPS demo URL. Localhost is not a hosted submission.
 
 ## 1. GitHub
 
-Create an empty public repository named `signal-clone` under your account. Do not initialize its README, because this project already has one. From this project directory:
-
-```bash
-git init -b main
-git add .
-git commit -m "Build Signal-inspired fullstack messaging application"
-git remote add origin https://github.com/YOUR_USERNAME/signal-clone.git
-git push -u origin main
-```
+The public repository is already available at https://github.com/Thunderbirdmen/signal-clone. Push further source changes to its `main` branch.
 
 Check `.gitignore` before staging. Keep `.venv`, `node_modules`, `.next`, runtime databases, session data, and `.env` files out of GitHub. Commit `.env.example` and dependency lock files.
 
