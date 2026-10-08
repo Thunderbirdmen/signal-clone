@@ -1,0 +1,92 @@
+"""Idempotent demo fixture. No real users or private data."""
+
+from datetime import datetime, timedelta, timezone
+from .db import connect
+
+
+def seed():
+    with connect() as db:
+        if db.execute("SELECT 1 FROM users LIMIT 1").fetchone():
+            return
+        now = datetime.now(timezone.utc)
+        people = [
+            ("alex", "Alex Morgan", "🌿"),
+            ("maya", "Maya Chen", "🌸"),
+            ("jordan", "Jordan Lee", "🏔️"),
+            ("sam", "Sam Rivera", "☀️"),
+            ("riley", "Riley Park", "🎨"),
+        ]
+        for name, display, avatar in people:
+            db.execute(
+                "INSERT INTO users(username,display_name,avatar,last_seen) VALUES (?,?,?,?)",
+                (name, display, avatar, now.isoformat()),
+            )
+        for a in range(1, 6):
+            for b in range(1, 6):
+                if a != b:
+                    db.execute("INSERT INTO contacts VALUES (?,?)", (a, b))
+        chats = [
+            ("direct", None, "1:2", [1, 2]),
+            ("group", "Weekend plans", None, [1, 2, 3, 4]),
+            ("direct", None, "1:3", [1, 3]),
+            ("direct", None, "1:4", [1, 4]),
+            ("group", "Design circle", None, [1, 2, 5]),
+        ]
+        samples = [
+            [
+                (2, "Hey Alex! How’s your day going?"),
+                (1, "Pretty good! Just finished the first version of our project."),
+                (2, "That’s exciting! Can’t wait to see it ✨"),
+                (1, "I’ll give you a walkthrough tomorrow. Coffee first?"),
+                (2, "Absolutely. The little place on Oak Street?"),
+                (1, "Perfect. See you at 10 ☕"),
+                (2, "Sounds like a plan!"),
+            ],
+            [
+                (3, "Who’s up for a hike this weekend? 🏔️"),
+                (4, "Count me in!"),
+                (1, "Me too. Let’s start early."),
+                (2, "I’ll bring snacks 🥨"),
+            ],
+            [
+                (1, "Thanks for sharing that playlist!"),
+                (3, "Of course! Track 4 is my favorite 🎵"),
+            ],
+            [
+                (4, "Made it home safely!"),
+                (1, "Good to hear. It was great catching up."),
+                (4, "Let’s do it again soon ☀️"),
+            ],
+            [
+                (5, "A little inspiration for the next project 🎨"),
+                (2, "Love the colors!"),
+                (1, "The details make all the difference."),
+            ],
+        ]
+        for index, ((kind, name, key, members), messages) in enumerate(
+            zip(chats, samples)
+        ):
+            cid = db.execute(
+                "INSERT INTO conversations(kind,name,direct_key,created_at) VALUES (?,?,?,?)",
+                (kind, name, key, now.isoformat()),
+            ).lastrowid
+            for uid in members:
+                db.execute(
+                    "INSERT INTO members VALUES (?,?,?)",
+                    (cid, uid, "admin" if kind == "group" and uid == 1 else "member"),
+                )
+            for j, (sender, body) in enumerate(messages):
+                stamp = (
+                    now - timedelta(minutes=index * 70 + (len(messages) - j) * 3)
+                ).isoformat()
+                mid = db.execute(
+                    "INSERT INTO messages(conversation_id,sender_id,body,created_at,client_id) VALUES (?,?,?,?,?)",
+                    (cid, sender, body, stamp, f"seed-{index}-{j}"),
+                ).lastrowid
+                for uid in members:
+                    if uid != sender:
+                        unread = uid == 1 and index in (0, 1) and j == len(messages) - 1
+                        db.execute(
+                            "INSERT INTO receipts VALUES (?,?,?,?)",
+                            (mid, uid, stamp, None if unread else stamp),
+                        )
