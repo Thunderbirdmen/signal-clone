@@ -57,6 +57,7 @@ def test_registration_persistence_and_logout(client):
     )
     h, data = login(client, "newuser")
     assert client.get("/me", headers=h).json()["username"] == "newuser"
+    assert {person["username"] for person in client.get("/contacts", headers=h).json()} == {"alex", "maya", "jordan"}
     response = client.patch(
         "/me", headers=h, json={"display_name": "New Person", "avatar": "🚀"}
     )
@@ -124,7 +125,7 @@ def test_contacts_and_unique_direct_conversations(client):
     )
     result = client.post("/contacts", headers=h, json={"username": "maya"})
     uid = result.json()["id"]
-    assert len(client.get("/contacts", headers=h).json()) == 1
+    assert len(client.get("/contacts", headers=h).json()) == 3
     first = client.post(
         "/conversations/direct", headers=h, json={"user_id": uid}
     ).json()

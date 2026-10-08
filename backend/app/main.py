@@ -295,6 +295,14 @@ def register(data: Register, request: Request):
             "INSERT INTO users(username,display_name,avatar,last_seen,password_hash) VALUES (?,?,?,?,?)",
             (username, display, data.avatar, now(), hash_password(data.password)),
         ).lastrowid
+        # Give newly registered reviewers usable contacts without exposing
+        # other real accounts or creating conversations on their behalf.
+        db.execute(
+            """INSERT OR IGNORE INTO contacts(owner_id,contact_id)
+            SELECT ?,id FROM users
+            WHERE username IN ('alex','maya','jordan') AND password_hash IS NULL""",
+            (uid,),
+        )
         user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
         return issue_session(db, user)
 

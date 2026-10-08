@@ -47,7 +47,7 @@ If your Python installation lacks wheels for an optional `uvicorn[standard]` dep
 | sam | Sam Rivera |
 | riley | Riley Park |
 
-The sign-in page has optional sample-account shortcuts for Alex, Maya, and Jordan. To register, enter an unused username or phone-number identifier, a display name, an avatar, and a password of at least 12 characters. Continue to the second step and enter the fixed demo code **123456**. No SMS is sent; this does not prove ownership of a phone number. Registered accounts sign in with their password. Existing accounts retain their stored profile; edit it in Settings.
+The sign-in page has optional sample-account shortcuts for Alex, Maya, and Jordan. To register, enter an unused username or phone-number identifier, a display name, an avatar, and a password of at least 12 characters. Continue to the second step and enter the fixed demo code **123456**. No SMS is sent; this does not prove ownership of a phone number. New accounts start with Alex, Maya, and Jordan as demo contacts, so direct and group chat can be tried immediately. Registered accounts sign in with their password. Existing accounts retain their stored profile; edit it in Settings.
 
 For a two-user demonstration, use a normal window for Alex and an incognito/private window for Maya. On your development machine you can also use `localhost:3000` and `127.0.0.1:3000` as separate storage origins. Two tabs on the same origin share local storage, so separate profiles/private windows are preferred.
 
