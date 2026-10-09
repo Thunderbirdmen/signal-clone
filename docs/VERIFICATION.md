@@ -37,12 +37,12 @@ Screenshots: `desktop-features.jpg` and `mobile-features.jpg` in this directory.
 
 ## Scope limits
 
-- The new group rename, role transfer, leave, audit, password, and header behavior passed API integration tests. The browser checklist above predates these additions; the updated frontend passed TypeScript checking and a production build.
+- The group rename, role transfer, leave, audit, mock OTP, and header behavior passed API integration tests. The browser checklist above predates these additions; the updated frontend passed TypeScript checking and a production build.
 - Message edit, delete for me, delete for everyone, permissions, quote visibility, and attachment erasure passed API integration tests. The updated frontend passed TypeScript checking and a production build; these new controls have not been included in the earlier browser checklist.
 
 - GitHub Actions [Validate application #1](https://github.com/Thunderbirdmen/signal-clone/actions/runs/37826930351) completed successfully on the initial public commit.
 - Dockerfiles and Compose configuration are supplied but were not executed locally because Docker was unavailable.
-- On 9 October 2026, the HTTPS Vercel demo completed the two-step registration with fixed OTP, showed three seeded contacts for the new account, kept the session across reload, logged out, and signed back in with its password. The sign-in and signup layouts were inspected at desktop and 390 × 844 mobile width.
+- Before the OTP-only revision, the HTTPS Vercel demo completed two-step registration, showed three seeded contacts, and kept its session across reload. The revised OTP-only sign-in and registration paths passed API integration tests; a final hosted browser check is recorded below.
 - A hosted API smoke test registered three accounts, confirmed the seeded contacts, created a direct conversation, sent and read a persistent message, created and renamed a three-member group, and confirmed that logout revoked a session.
 - A separate hosted WebSocket smoke test connected two authenticated accounts with the production frontend Origin. The recipient received the real-time sync event after a message was sent, and REST history contained that same message.
 - The final hosted API returned eight conversations for Alex, including Note to Self, with boolean preference fields. In the live Vercel UI, Alex signed in through the sample-account picker; the conversation list rendered without stray zeroes, and pin/unpin changed ordering and its icon. Render showed the backend deploy live, and Vercel showed the final frontend deploy ready.

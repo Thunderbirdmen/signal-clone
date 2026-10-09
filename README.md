@@ -50,7 +50,7 @@ If your Python installation lacks wheels for an optional `uvicorn[standard]` dep
 | noah | Noah Williams |
 | ella | Ella Brooks |
 
-The sign-in page has optional sample-account shortcuts for Alex, Maya, and Jordan. To register, enter an unused username or phone-number identifier, a display name, an avatar, and a password of at least 12 characters. Continue to the second step and enter the fixed demo code **123456**. No SMS is sent; this does not prove ownership of a phone number. New accounts start with Alex, Maya, and Jordan as demo contacts, so direct and group chat can be tried immediately. Registered accounts sign in with their password. Existing accounts retain their stored profile; edit it in Settings.
+Sign-in and registration both use the fixed mock OTP **123456**. Enter a username or phone-number identifier, then the code. Registration also collects a display name and avatar. The sample-account shortcuts fill Alex, Maya, or Jordan's username and still require the code. No SMS is sent; this does not prove ownership of an identifier. New accounts start with three demo contacts and Note to Self. Existing accounts retain their stored profile; edit it in Settings.
 
 For a two-user demonstration, use a normal window for Alex and an incognito/private window for Maya. On your development machine you can also use `localhost:3000` and `127.0.0.1:3000` as separate storage origins. Two tabs on the same origin share local storage, so separate profiles/private windows are preferred.
 
@@ -64,7 +64,7 @@ The named `signal-data` volume persists SQLite across container restarts. These 
 
 ## Features
 
-- Separate password sign-in and account creation, public sample-account entry, seven-day sessions, logout, name and emoji avatar editing.
+- Two-step mock OTP sign-in and registration, seven-day sessions, logout, name and emoji avatar editing.
 - Contacts, search by name/username, conversation previews, unread counts, and per-user pin, mute, archive, and mark-as-read controls.
 - Private Note to Self for every account, including newly registered users.
 - Persistent direct messages with optimistic sending, retry on failure, and deduplication.
@@ -133,13 +133,12 @@ Foreign keys are enabled on **every** connection. Composite keys stop duplicate 
 
 ## API overview
 
-All routes except `/auth/login`, `/auth/register`, `/auth/demo`, and `/health` require `Authorization: Bearer <token>`.
+All routes except `/auth/login`, `/auth/register`, and `/health` require `Authorization: Bearer <token>`.
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| POST | /auth/login | Password sign-in for an existing account |
-| POST | /auth/register | Create a password-protected account using the visible mocked OTP (`123456`) |
-| POST | /auth/demo | Enter a seeded public sample account when enabled |
+| POST | /auth/login | Sign in to an existing account with the fixed mock OTP (`123456`) |
+| POST | /auth/register | Create an account with the fixed mock OTP (`123456`) |
 | POST | /auth/logout | Revoke current session and close its sockets |
 | GET / PATCH | /me | Read/update profile |
 | GET / POST | /contacts | List/add a registered contact |
@@ -174,7 +173,6 @@ Backend variables are loaded from `.env` when started with `--env-file .env`; pr
 | FRONTEND_ORIGINS | http://localhost:3000,http://127.0.0.1:3000 | Exact comma-separated allowed origins, no trailing slash |
 | DATABASE_PATH | backend/data/signal.db | Use a persistent disk path when hosted |
 | SEED_DEMO | true | Seeds only an empty users table |
-| ENABLE_DEMO_LOGIN | true | Allows only seeded sample accounts through `/auth/demo`; set false to disable public demo entry |
 | NEXT_PUBLIC_API_URL | http://localhost:8000 | Frontend **build-time** variable; redeploy after changing |
 
 ## Validation
@@ -189,13 +187,13 @@ npm run typecheck
 npm run build
 ```
 
-The integration suite covers registration/session persistence/logout, contacts, direct-chat uniqueness, authorization, validation, receipt transitions, duplicate sends, cross-chat reply rejection, pagination, group admin controls, WebSocket delivery/typing, repeatable seeding, attachment access/validation, reaction changes, timer permissions, expiry cleanup, password privacy, role changes, leaving groups, and audit history. Each test uses a temporary database.
+The integration suite covers mock OTP registration and sign-in, session persistence/logout, contacts, direct-chat uniqueness, authorization, validation, receipt transitions, duplicate sends, cross-chat reply rejection, pagination, group admin controls, WebSocket delivery/typing, repeatable seeding, attachment access/validation, reaction changes, timer permissions, expiry cleanup, role changes, leaving groups, and audit history. Each test uses a temporary database.
 
 See [verification notes](docs/VERIFICATION.md), [deployment guide](docs/DEPLOYMENT.md), [design and scope](docs/DESIGN_AND_SCOPE.md), and [interview walkthrough](docs/INTERVIEW.md).
 
 ## Assumptions and tradeoffs
 
-1. Registration includes a clearly labeled fixed demo OTP (`123456`) to reflect the assignment flow. It does **not** verify username or phone ownership, and no SMS is sent. Seeded accounts are publicly accessible while `ENABLE_DEMO_LOGIN=true`. New accounts require a 12-character password stored as a salted PBKDF2 hash. Account recovery and real identity verification are not implemented, so this is not production authentication.
+1. Sign-in and registration use a clearly labeled fixed demo OTP (`123456`) to reflect the assignment flow. It does **not** verify username or phone ownership, and no SMS is sent. Anyone who knows an identifier and this public code can access that account. This is assignment-only authentication, unsuitable for private communication.
 2. Sessions use random bearer tokens; only SHA-256 hashes are stored in SQLite. The browser stores the token in localStorage for simple persistence. Production should use an appropriate secure cookie/session design and real identity verification.
 3. Emoji avatars satisfy profile avatar selection without file-upload storage. Profile photos are not implemented.
 4. New group members can read the group's existing history. Removed members cannot fetch/send/read or receive new chat events. Original receipt recipients are retained; removing a member does not rewrite historical delivery status.

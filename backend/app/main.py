@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 from .db import connect, initialize
 from .realtime import hub
 from .seed import seed
-from .security import hash_password, verify_password, demo_enabled, rate_limit
+from .security import rate_limit
 
 
 def now():
@@ -86,19 +86,14 @@ app.add_middleware(
 
 class Login(BaseModel):
     username: str = Field(min_length=3, max_length=64)
-    password: str = Field(min_length=1, max_length=128)
+    otp: str = Field(min_length=6, max_length=6)
 
 
 class Register(BaseModel):
     username: str = Field(min_length=3, max_length=64)
     display_name: str = Field(min_length=1, max_length=60)
     avatar: str = "💙"
-    password: str = Field(min_length=12, max_length=128)
     otp: str = Field(min_length=6, max_length=6)
-
-
-class DemoLogin(BaseModel):
-    username: str
 
 
 AVATARS = ["💙", "🌿", "🌸", "🏔️", "☀️", "🎨", "🚀", "🐱", "🌊", "🎧", "🦊", "🌻"]
@@ -289,16 +284,14 @@ def login(data: Login, request: Request):
     username = valid_username(data.username)
     rate_limit(f"auth-ip:{request.client.host if request.client else 'unknown'}", 30)
     rate_limit(f"auth-user:{username}", 15)
+    if not secrets.compare_digest(data.otp, "123456"):
+        raise HTTPException(401, "Incorrect demo verification code.")
     with connect() as db:
         user = db.execute(
             "SELECT * FROM users WHERE username=?", (username,)
         ).fetchone()
-        if (
-            not user
-            or not user["password_hash"]
-            or not verify_password(data.password, user["password_hash"])
-        ):
-            raise HTTPException(401, "Incorrect username or password.")
+        if not user:
+            raise HTTPException(401, "Account not found. Create an account first.")
         return issue_session(db, user)
 
 
@@ -318,34 +311,19 @@ def register(data: Register, request: Request):
         if db.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
             raise HTTPException(409, "That username is already taken.")
         uid = db.execute(
-            "INSERT INTO users(username,display_name,avatar,last_seen,password_hash) VALUES (?,?,?,?,?)",
-            (username, display, data.avatar, now(), hash_password(data.password)),
+            "INSERT INTO users(username,display_name,avatar,last_seen) VALUES (?,?,?,?)",
+            (username, display, data.avatar, now()),
         ).lastrowid
         # Give newly registered reviewers usable contacts without exposing
         # other real accounts or creating conversations on their behalf.
         db.execute(
             """INSERT OR IGNORE INTO contacts(owner_id,contact_id)
             SELECT ?,id FROM users
-            WHERE username IN ('alex','maya','jordan') AND password_hash IS NULL""",
+            WHERE username IN ('alex','maya','jordan')""",
             (uid,),
         )
         ensure_note_to_self(db, uid)
         user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
-        return issue_session(db, user)
-
-
-@app.post("/auth/demo")
-def demo_login(data: DemoLogin, request: Request):
-    username = data.username.strip().lower()
-    rate_limit(f"demo-ip:{request.client.host if request.client else 'unknown'}", 30)
-    if not demo_enabled() or username not in {"alex", "maya", "jordan", "sam", "riley"}:
-        raise HTTPException(401, "Demo access is unavailable.")
-    with connect() as db:
-        user = db.execute(
-            "SELECT * FROM users WHERE username=?", (username,)
-        ).fetchone()
-        if not user or user["password_hash"]:
-            raise HTTPException(401, "Demo access is unavailable.")
         return issue_session(db, user)
 
 

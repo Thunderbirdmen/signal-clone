@@ -24,12 +24,11 @@ For durable storage, upgrade the existing Render service to a paid instance and 
 | PYTHON_VERSION | `3.13.5` |
 | DATABASE_PATH | `/var/data/signal.db` |
 | SEED_DEMO | `true` |
-| ENABLE_DEMO_LOGIN | `true` for the public assignment demo only |
 | FRONTEND_ORIGINS | Your exact final frontend origin, e.g. `https://your-signal.vercel.app` |
 
 Attach a **persistent disk** mounted at `/var/data`. A Render persistent disk requires a paid service. The provider showed $7/month for the smallest paid instance and $0.25/GB/month for disk when this demo was deployed. Free Render instances have ephemeral filesystems and lose SQLite changes when restarted/redeployed, so that option does **not** satisfy durable hosted storage.
 
-This configuration exposes seeded sample accounts through `/auth/demo`. Treat all hosted demo content as public test data; do not use real messages or personal information. New-account registration uses a password but does not verify username or phone ownership.
+Seeded sample accounts use the same fixed mock OTP (`123456`) as all other accounts. Treat all hosted demo content as public test data; do not use real messages or personal information. The code does not verify username or phone ownership.
 
 Use one backend instance. Do not scale horizontally or add workers with the current in-memory WebSocket hub.
 

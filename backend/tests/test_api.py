@@ -17,23 +17,20 @@ def client(tmp_path, monkeypatch):
 
 
 def login(client, name):
-    if name in {"alex", "maya", "jordan", "sam", "riley"}:
-        response = client.post("/auth/demo", json={"username": name})
-    else:
+    if name not in {"alex", "maya", "jordan", "sam", "riley", "priya", "noah", "ella"}:
         response = client.post(
             "/auth/register",
             json={
                 "username": name,
                 "display_name": name,
                 "avatar": "💙",
-                "password": "test-password-2026",
                 "otp": "123456",
             },
         )
         if response.status_code == 409:
-            response = client.post(
-                "/auth/login", json={"username": name, "password": "test-password-2026"}
-            )
+            response = client.post("/auth/login", json={"username": name, "otp": "123456"})
+    else:
+        response = client.post("/auth/login", json={"username": name, "otp": "123456"})
     assert response.status_code == 200, response.text
     data = response.json()
     return {"Authorization": "Bearer " + data["token"]}, data
@@ -51,7 +48,7 @@ def test_registration_persistence_and_logout(client):
     assert (
         client.post(
             "/auth/login",
-            json={"username": "newuser", "password": "test-password-2026"},
+            json={"username": "newuser", "otp": "123456"},
         ).status_code
         == 401
     )
@@ -79,31 +76,31 @@ def test_registration_persistence_and_logout(client):
     assert client.get("/me", headers=h2).status_code == 200
 
 
-def test_separate_password_and_demo_authentication(client):
+def test_mock_otp_for_registration_and_signin(client):
     assert (
         client.post(
             "/auth/register",
-            json={"username": "badotp", "display_name": "Bad OTP", "password": "test-password-2026", "otp": "000000"},
+            json={"username": "badotp", "display_name": "Bad OTP", "otp": "000000"},
         ).status_code
         == 401
     )
     assert (
         client.post(
-            "/auth/login", json={"username": "alex", "password": "123456"}
+            "/auth/login", json={"username": "alex", "otp": "000000"}
         ).status_code
         == 401
     )
     assert (
         client.post(
             "/auth/login",
-            json={"username": "missing", "password": "a-long-password-2026"},
+            json={"username": "missing", "otp": "123456"},
         ).status_code
         == 401
     )
     assert (
         client.post(
             "/auth/register",
-            json={"username": "shortpass", "display_name": "New", "password": "short", "otp": "123456"},
+            json={"username": "shortpass", "display_name": "New", "otp": "12345"},
         ).status_code
         == 422
     )
@@ -114,15 +111,12 @@ def test_separate_password_and_demo_authentication(client):
             json={
                 "username": "realaccount",
                 "display_name": "Again",
-                "password": "test-password-2026",
                 "otp": "123456",
             },
         ).status_code
         == 409
     )
-    assert (
-        client.post("/auth/demo", json={"username": "realaccount"}).status_code == 401
-    )
+    assert client.post("/auth/demo", json={"username": "realaccount"}).status_code == 404
     assert login(client, "realaccount")[1]["user"]["id"] == registered["user"]["id"]
 
 
@@ -312,7 +306,7 @@ def test_conversation_preferences_are_private_to_each_member(client):
     assert client.patch(path, headers=outsider, json={"pinned": True}).status_code == 403
 
 
-def test_password_privacy_demo_toggle_and_headers(client, monkeypatch):
+def test_otp_only_and_security_headers(client):
     new, data = login(client, "secureuser")
     assert "password_hash" not in data["user"]
     response = client.get("/me", headers=new)
@@ -322,17 +316,13 @@ def test_password_privacy_demo_toggle_and_headers(client, monkeypatch):
     assert (
         client.post(
             "/auth/login",
-            json={"username": "secureuser", "password": "incorrect-passphrase"},
+            json={"username": "secureuser", "otp": "000000"},
         ).status_code
         == 401
     )
     with db.connect() as conn:
-        stored = conn.execute(
-            "SELECT password_hash FROM users WHERE username='secureuser'"
-        ).fetchone()[0]
-    assert stored.startswith("pbkdf2_sha256$") and "test-password-2026" not in stored
-    monkeypatch.setenv("ENABLE_DEMO_LOGIN", "false")
-    assert client.post("/auth/demo", json={"username": "alex"}).status_code == 401
+        assert conn.execute("SELECT password_hash FROM users WHERE username='secureuser'").fetchone()[0] is None
+    assert client.post("/auth/login", json={"username": "secureuser", "password": "123456"}).status_code == 422
     assert login(client, "secureuser")[1]["user"]["id"] == data["user"]["id"]
 
 

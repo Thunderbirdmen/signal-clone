@@ -35,7 +35,7 @@ Shared Avatar, IconButton, Receipt and modal styling are in `components/ui.tsx` 
 
 ## Scope against the attached extension prompt
 
-The original assignment's core flow and most optional extras are implemented: mocked OTP registration, password login, profile emoji avatar, contacts, direct/group chat, WebSocket sync, receipts, typing, attachments, reactions, replies, disappearing messages, dark mode, mobile layout, and keyboard shortcuts. This release also has Note to Self, edit/delete, and per-user pin/mute/archive.
+The original assignment's core flow and most optional extras are implemented: mocked OTP registration and sign-in, profile emoji avatar, contacts, direct/group chat, WebSocket sync, receipts, typing, attachments, reactions, replies, disappearing messages, dark mode, mobile layout, and keyboard shortcuts. This release also has Note to Self, edit/delete, and per-user pin/mute/archive.
 
 The attached prompt asks for substantially more than the original assignment. It describes a previous backend phase with sequence ordering, watermark receipts, ticket-authenticated sockets and simulated end-to-end encryption; **that phase does not exist in this repository**. The actual backend uses message IDs for ordering, individual receipt rows, and a bearer token in the first WebSocket frame. Message contents are plaintext in SQLite. Do not present the app as end-to-end encrypted or safe for confidential conversations.
 
