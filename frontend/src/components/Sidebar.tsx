@@ -150,8 +150,8 @@ export default function Sidebar({
               <div className="conversation-copy">
                 <div className="conversation-top">
                   <strong>{title(c, me.id)}</strong>
-                  {c.pinned && <Pin size={13} aria-label="Pinned" />}
-                  {c.muted && <VolumeX size={13} aria-label="Muted" />}
+                  {Boolean(c.pinned) && <Pin size={13} aria-label="Pinned" />}
+                  {Boolean(c.muted) && <VolumeX size={13} aria-label="Muted" />}
                   <span className={c.unread ? "unread-time" : ""}>
                     {c.last_message
                       ? dayLabel(c.last_message.created_at) === "Today"

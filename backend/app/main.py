@@ -421,6 +421,8 @@ def conversations(user=Depends(current_user)):
         for row in rows:
             item = dict(row)
             item.pop("direct_key")
+            for preference in ("pinned", "muted", "archived"):
+                item[preference] = bool(item[preference])
             item["members"] = [
                 public_user(r)
                 for r in db.execute(

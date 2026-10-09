@@ -306,8 +306,8 @@ def test_conversation_preferences_are_private_to_each_member(client):
     assert client.patch(path, headers=alex, json={"pinned": True, "muted": True, "archived": True}).status_code == 200
     alex_chat = next(c for c in client.get("/conversations", headers=alex).json() if c["id"] == 1)
     maya_chat = next(c for c in client.get("/conversations", headers=maya).json() if c["id"] == 1)
-    assert (alex_chat["pinned"], alex_chat["muted"], alex_chat["archived"]) == (1, 1, 1)
-    assert (maya_chat["pinned"], maya_chat["muted"], maya_chat["archived"]) == (0, 0, 0)
+    assert (alex_chat["pinned"], alex_chat["muted"], alex_chat["archived"]) == (True, True, True)
+    assert (maya_chat["pinned"], maya_chat["muted"], maya_chat["archived"]) == (False, False, False)
     outsider, _ = login(client, "outsider")
     assert client.patch(path, headers=outsider, json={"pinned": True}).status_code == 403
 
