@@ -191,7 +191,7 @@ npm run build
 
 The integration suite covers registration/session persistence/logout, contacts, direct-chat uniqueness, authorization, validation, receipt transitions, duplicate sends, cross-chat reply rejection, pagination, group admin controls, WebSocket delivery/typing, repeatable seeding, attachment access/validation, reaction changes, timer permissions, expiry cleanup, password privacy, role changes, leaving groups, and audit history. Each test uses a temporary database.
 
-See [verification notes](docs/VERIFICATION.md), [deployment guide](docs/DEPLOYMENT.md), and [interview walkthrough](docs/INTERVIEW.md).
+See [verification notes](docs/VERIFICATION.md), [deployment guide](docs/DEPLOYMENT.md), [design and scope](docs/DESIGN_AND_SCOPE.md), and [interview walkthrough](docs/INTERVIEW.md).
 
 ## Assumptions and tradeoffs
 
