@@ -15,14 +15,17 @@ def seed():
             ("jordan", "Jordan Lee", "🏔️"),
             ("sam", "Sam Rivera", "☀️"),
             ("riley", "Riley Park", "🎨"),
+            ("priya", "Priya Shah", "🚀"),
+            ("noah", "Noah Brooks", "🌊"),
+            ("ella", "Ella Kim", "🎧"),
         ]
         for name, display, avatar in people:
             db.execute(
                 "INSERT INTO users(username,display_name,avatar,last_seen) VALUES (?,?,?,?)",
                 (name, display, avatar, now.isoformat()),
             )
-        for a in range(1, 6):
-            for b in range(1, 6):
+        for a in range(1, len(people) + 1):
+            for b in range(1, len(people) + 1):
                 if a != b:
                     db.execute("INSERT INTO contacts VALUES (?,?)", (a, b))
         chats = [
@@ -31,6 +34,11 @@ def seed():
             ("direct", None, "1:3", [1, 3]),
             ("direct", None, "1:4", [1, 4]),
             ("group", "Design circle", None, [1, 2, 5]),
+            ("group", "Project launch", None, [1, 6, 7, 8]),
+            ("direct", None, "1:6", [1, 6]),
+            ("group", "Study buddies", None, [2, 6, 8]),
+            ("direct", None, "3:7", [3, 7]),
+            ("direct", None, "5:8", [5, 8]),
         ]
         samples = [
             [
@@ -62,6 +70,30 @@ def seed():
                 (2, "Love the colors!"),
                 (1, "The details make all the difference."),
             ],
+            [
+                (6, "The launch checklist is ready for review."),
+                (1, "I’ll check the API flow this afternoon."),
+                (7, "I’m testing the mobile layout now 📱"),
+                (8, "Great — I’ll write up the release notes."),
+            ],
+            [
+                (6, "I shared the final mockup in our group."),
+                (1, "Thanks Priya. The spacing looks much better."),
+                (6, "Small details make the difference ✨"),
+            ],
+            [
+                (8, "Anyone free to review the database diagram?"),
+                (2, "I can take a look after class."),
+                (6, "I’ll review the relationships too."),
+            ],
+            [
+                (7, "The trail photos turned out great!"),
+                (3, "Send me your favorite one when you get a chance 🏔️"),
+            ],
+            [
+                (8, "Could you send over the design notes?"),
+                (5, "Of course — I’ll put them together today."),
+            ],
         ]
         for index, ((kind, name, key, members), messages) in enumerate(
             zip(chats, samples)
@@ -72,12 +104,12 @@ def seed():
             ).lastrowid
             for uid in members:
                 db.execute(
-                    "INSERT INTO members VALUES (?,?,?)",
+                    "INSERT INTO members(conversation_id,user_id,role) VALUES (?,?,?)",
                     (cid, uid, "admin" if kind == "group" and uid == 1 else "member"),
                 )
             for j, (sender, body) in enumerate(messages):
                 stamp = (
-                    now - timedelta(minutes=index * 70 + (len(messages) - j) * 3)
+                    now - timedelta(days=index // 3, minutes=(index % 3) * 70 + (len(messages) - j) * 3)
                 ).isoformat()
                 mid = db.execute(
                     "INSERT INTO messages(conversation_id,sender_id,body,created_at,client_id) VALUES (?,?,?,?,?)",

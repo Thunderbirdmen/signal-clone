@@ -43,6 +43,9 @@ async def lifespan(app):
     initialize()
     if os.getenv("SEED_DEMO", "true").lower() == "true":
         seed()
+    with connect() as db:
+        for row in db.execute("SELECT id FROM users").fetchall():
+            ensure_note_to_self(db, row["id"])
     purge_expired()
 
     async def expire_messages():
@@ -142,6 +145,12 @@ class GroupNameInput(BaseModel):
 
 class RoleInput(BaseModel):
     role: str
+
+
+class ConversationPreferences(BaseModel):
+    pinned: bool | None = None
+    muted: bool | None = None
+    archived: bool | None = None
 
 
 class MessageInput(BaseModel):
@@ -258,6 +267,23 @@ def issue_session(db, user):
     return {"token": token, "user": public_user(user)}
 
 
+def ensure_note_to_self(db, uid):
+    """Keep one personal conversation per account, including migrated accounts."""
+    key = f"{uid}:{uid}"
+    db.execute(
+        "INSERT OR IGNORE INTO conversations(kind,direct_key,created_at) VALUES ('direct',?,?)",
+        (key, now()),
+    )
+    cid = db.execute(
+        "SELECT id FROM conversations WHERE direct_key=?", (key,)
+    ).fetchone()[0]
+    db.execute(
+        "INSERT OR IGNORE INTO members(conversation_id,user_id,role) VALUES (?,?,'member')",
+        (cid, uid),
+    )
+    return cid
+
+
 @app.post("/auth/login")
 def login(data: Login, request: Request):
     username = valid_username(data.username)
@@ -303,6 +329,7 @@ def register(data: Register, request: Request):
             WHERE username IN ('alex','maya','jordan') AND password_hash IS NULL""",
             (uid,),
         )
+        ensure_note_to_self(db, uid)
         user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
         return issue_session(db, user)
 
@@ -388,7 +415,7 @@ def conversations(user=Depends(current_user)):
     result = []
     with connect() as db:
         rows = db.execute(
-            "SELECT c.* FROM conversations c JOIN members m ON m.conversation_id=c.id WHERE m.user_id=?",
+            "SELECT c.*,m.pinned,m.muted,m.archived FROM conversations c JOIN members m ON m.conversation_id=c.id WHERE m.user_id=?",
             (user["id"],),
         ).fetchall()
         for row in rows:
@@ -402,7 +429,9 @@ def conversations(user=Depends(current_user)):
                 )
             ]
             last = db.execute(
-                """SELECT m.*,u.display_name sender_name FROM messages m JOIN users u ON u.id=m.sender_id
+                """SELECT m.*,u.display_name sender_name,a.media_type attachment_type
+                FROM messages m JOIN users u ON u.id=m.sender_id
+                LEFT JOIN attachments a ON a.message_id=m.id
                 WHERE conversation_id=? AND (m.expires_at IS NULL OR m.expires_at>?)
                 AND NOT EXISTS (SELECT 1 FROM hidden_messages h WHERE h.message_id=m.id AND h.user_id=?)
                 ORDER BY m.id DESC LIMIT 1""",
@@ -416,20 +445,43 @@ def conversations(user=Depends(current_user)):
                 (row["id"], user["id"], user["id"], now()),
             ).fetchone()[0]
             result.append(item)
-    return sorted(
-        result,
-        key=lambda c: (c["last_message"] or {}).get("created_at", c["created_at"]),
-        reverse=True,
-    )
+    return sorted(result, key=lambda c: (
+        c["pinned"],
+        (c["last_message"] or {}).get("created_at", c["created_at"]),
+    ), reverse=True)
+
+
+@app.patch("/conversations/{cid}/preferences")
+async def conversation_preferences(
+    cid: int, data: ConversationPreferences, user=Depends(current_user)
+):
+    changes = data.model_dump(exclude_unset=True)
+    if not changes or any(value is None for value in changes.values()):
+        raise HTTPException(422, "Choose a preference to change.")
+    with connect() as db:
+        current = member(db, cid, user["id"])
+        db.execute(
+            """UPDATE members SET pinned=?,muted=?,archived=?
+            WHERE conversation_id=? AND user_id=?""",
+            (
+                int(changes.get("pinned", current["pinned"])),
+                int(changes.get("muted", current["muted"])),
+                int(changes.get("archived", current["archived"])),
+                cid,
+                user["id"],
+            ),
+        )
+    await hub.emit([user["id"]], {"type": "sync"})
+    return {"ok": True}
 
 
 @app.post("/conversations/direct")
 async def direct(data: DirectInput, user=Depends(current_user)):
-    if data.user_id == user["id"]:
-        raise HTTPException(422, "Choose another user.")
     with connect() as db:
         if not db.execute("SELECT 1 FROM users WHERE id=?", (data.user_id,)).fetchone():
             raise HTTPException(404, "User not found.")
+        if data.user_id == user["id"]:
+            return {"id": ensure_note_to_self(db, user["id"])}
         key = ":".join(map(str, sorted([data.user_id, user["id"]])))
         db.execute(
             "INSERT OR IGNORE INTO conversations(kind,direct_key,created_at) VALUES ('direct',?,?)",
@@ -440,7 +492,7 @@ async def direct(data: DirectInput, user=Depends(current_user)):
         ).fetchone()[0]
         for uid in [data.user_id, user["id"]]:
             db.execute(
-                "INSERT OR IGNORE INTO members VALUES (?,?,?)", (cid, uid, "member")
+                "INSERT OR IGNORE INTO members(conversation_id,user_id,role) VALUES (?,?,?)", (cid, uid, "member")
             )
     await hub.emit([data.user_id, user["id"]], {"type": "sync"})
     return {"id": cid}
@@ -464,7 +516,7 @@ async def group(data: GroupInput, user=Depends(current_user)):
         ).lastrowid
         for uid in ids:
             db.execute(
-                "INSERT INTO members VALUES (?,?,?)",
+                "INSERT INTO members(conversation_id,user_id,role) VALUES (?,?,?)",
                 (cid, uid, "admin" if uid == user["id"] else "member"),
             )
         audit(db, cid, user["id"], "group_created", detail=data.name.strip())
@@ -489,7 +541,7 @@ async def add_member(cid: int, data: MemberInput, user=Depends(current_user)):
         if len(audience(db, cid)) >= 51:
             raise HTTPException(422, "This demo supports up to 51 group members.")
         cursor = db.execute(
-            "INSERT OR IGNORE INTO members VALUES (?,?,?)",
+            "INSERT OR IGNORE INTO members(conversation_id,user_id,role) VALUES (?,?,?)",
             (cid, data.user_id, "member"),
         )
         if cursor.rowcount:

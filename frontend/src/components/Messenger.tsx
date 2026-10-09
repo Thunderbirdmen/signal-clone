@@ -172,6 +172,8 @@ function Workspace({
         onNew={() => setDialog("new")}
         onSettings={() => setDialog("settings")}
         onContact={(user) => void openContact(user)}
+        onPreference={state.setPreference}
+        onMarkRead={state.markRead}
         notify={notify}
       />
       <Chat
@@ -195,6 +197,7 @@ function Workspace({
       {dialog === "new" && (
         <NewChat
           token={token}
+          me={me}
           contacts={state.contacts}
           onClose={close}
           onCreated={(id) => {

@@ -46,6 +46,9 @@ If your Python installation lacks wheels for an optional `uvicorn[standard]` dep
 | jordan | Jordan Lee |
 | sam | Sam Rivera |
 | riley | Riley Park |
+| priya | Priya Shah |
+| noah | Noah Williams |
+| ella | Ella Brooks |
 
 The sign-in page has optional sample-account shortcuts for Alex, Maya, and Jordan. To register, enter an unused username or phone-number identifier, a display name, an avatar, and a password of at least 12 characters. Continue to the second step and enter the fixed demo code **123456**. No SMS is sent; this does not prove ownership of a phone number. New accounts start with Alex, Maya, and Jordan as demo contacts, so direct and group chat can be tried immediately. Registered accounts sign in with their password. Existing accounts retain their stored profile; edit it in Settings.
 
@@ -62,7 +65,8 @@ The named `signal-data` volume persists SQLite across container restarts. These 
 ## Features
 
 - Separate password sign-in and account creation, public sample-account entry, seven-day sessions, logout, name and emoji avatar editing.
-- Contacts, search by name/username, recent-first conversation list, unread counts and previews.
+- Contacts, search by name/username, conversation previews, unread counts, and per-user pin, mute, archive, and mark-as-read controls.
+- Private Note to Self for every account, including newly registered users.
 - Persistent direct messages with optimistic sending, retry on failure, and deduplication.
 - Live delivery/read receipts, typing indicators, online/last-seen presence.
 - Groups with persistent membership, admin-only add/remove controls, server-side authorization.
@@ -117,7 +121,7 @@ backend/
 | sessions | token_hash PK, user_id FK, expires_at | Revocable, expiring bearer sessions |
 | contacts | owner_id FK, contact_id FK, composite PK | Per-user address book |
 | conversations | id, kind, name, direct_key UNIQUE, created_at, disappear_seconds | Direct and group chats with a timer |
-| members | conversation_id FK, user_id FK, role, composite PK | Membership and group administration |
+| members | conversation_id FK, user_id FK, role, pinned, muted, archived, composite PK | Membership, group administration and personal chat preferences |
 | messages | id, conversation_id FK, sender_id FK, body, created_at, client_id, reply_to FK, expires_at, edited_at, deleted_at | Message history; timed rows are purged |
 | hidden_messages | message_id FK, user_id FK, composite PK | Per-user “delete for me” visibility |
 | attachments | message_id PK/FK, name, media_type, size, content BLOB | One file per message, removed with the message |
@@ -140,6 +144,7 @@ All routes except `/auth/login`, `/auth/register`, `/auth/demo`, and `/health` r
 | GET / PATCH | /me | Read/update profile |
 | GET / POST | /contacts | List/add a registered contact |
 | GET | /conversations | Member-only chat summaries |
+| PATCH | /conversations/{id}/preferences | Change current member's pin, mute or archive flags |
 | POST | /conversations/direct | Create or return a direct conversation |
 | POST | /conversations/group | Create a group and its memberships |
 | POST | /conversations/{id}/members | Admin adds a member |

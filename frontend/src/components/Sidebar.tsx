@@ -7,6 +7,11 @@ import {
   Users,
   Plus,
   CircleDashed,
+  Pin,
+  VolumeX,
+  Archive,
+  MoreHorizontal,
+  CheckCheck,
 } from "lucide-react";
 import {
   Conversation,
@@ -27,6 +32,8 @@ export default function Sidebar({
   onNew,
   onSettings,
   onContact,
+  onPreference,
+  onMarkRead,
   notify,
 }: {
   me: User;
@@ -37,17 +44,21 @@ export default function Sidebar({
   onNew: () => void;
   onSettings: () => void;
   onContact: (user: User) => void;
+  onPreference: (conversation: Conversation, field: "pinned" | "muted" | "archived", value: boolean) => Promise<void>;
+  onMarkRead: (id: number) => Promise<void>;
   notify: (s: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [menu, setMenu] = useState<number | null>(null);
   const query = search.toLowerCase();
   const filtered = chats.filter(
     (c) =>
       (title(c, me.id).toLowerCase().includes(query) ||
         c.members.some((m) => m.username.toLowerCase().includes(query))) &&
       (filter !== "unread" || c.unread > 0) &&
-      (filter !== "groups" || c.kind === "group"),
+      (filter !== "groups" || c.kind === "group") &&
+      (filter === "archived" ? c.archived : !c.archived),
   );
   return (
     <>
@@ -111,10 +122,11 @@ export default function Sidebar({
             ["all", "All"],
             ["unread", "Unread"],
             ["groups", "Groups"],
+            ["archived", "Archived"],
           ].map(([id, label]) => (
             <button
               key={id}
-              onClick={() => setFilter(id)}
+              onClick={() => { setFilter(id); setMenu(null); }}
               className={filter === id ? "active" : ""}
             >
               {label}
@@ -123,10 +135,10 @@ export default function Sidebar({
         </div>
         <div className="conversation-list">
           {filtered.map((c) => (
+            <div className="conversation-item" key={c.id}>
             <button
               className={`conversation ${active === c.id ? "active" : ""}`}
-              key={c.id}
-              onClick={() => onSelect(c.id)}
+              onClick={() => { setMenu(null); onSelect(c.id); }}
             >
               <Avatar
                 value={avatar(c, me.id)}
@@ -138,6 +150,8 @@ export default function Sidebar({
               <div className="conversation-copy">
                 <div className="conversation-top">
                   <strong>{title(c, me.id)}</strong>
+                  {c.pinned && <Pin size={13} aria-label="Pinned" />}
+                  {c.muted && <VolumeX size={13} aria-label="Muted" />}
                   <span className={c.unread ? "unread-time" : ""}>
                     {c.last_message
                       ? dayLabel(c.last_message.created_at) === "Today"
@@ -154,12 +168,20 @@ export default function Sidebar({
                     {c.kind === "group" && c.last_message
                       ? `${c.last_message.sender_name.split(" ")[0]}: `
                       : ""}
-                    {c.last_message?.body || "Start a conversation"}
+                    {c.last_message?.body || (c.last_message?.attachment_type?.startsWith("image/") ? "Photo" : c.last_message?.attachment_type ? "Attachment" : "Start a conversation")}
                   </p>
                   {c.unread > 0 && <b className="badge">{c.unread}</b>}
                 </div>
               </div>
             </button>
+            <button className="conversation-options" aria-label={`Options for ${title(c, me.id)}`} aria-expanded={menu === c.id} onClick={() => setMenu(menu === c.id ? null : c.id)}><MoreHorizontal size={18} /></button>
+            {menu === c.id && <div className="conversation-menu">
+              <button onClick={() => { setMenu(null); void onPreference(c, "pinned", !c.pinned); }}><Pin size={15} />{c.pinned ? "Unpin chat" : "Pin chat"}</button>
+              <button onClick={() => { setMenu(null); void onPreference(c, "muted", !c.muted); }}><VolumeX size={15} />{c.muted ? "Unmute notifications" : "Mute notifications"}</button>
+              {c.unread > 0 && <button onClick={() => { setMenu(null); void onMarkRead(c.id); }}><CheckCheck size={15} />Mark as read</button>}
+              <button onClick={() => { setMenu(null); void onPreference(c, "archived", !c.archived); }}><Archive size={15} />{c.archived ? "Unarchive chat" : "Archive chat"}</button>
+            </div>}
+            </div>
           ))}
           {!filtered.length && (
             <div className="list-empty">
@@ -169,7 +191,7 @@ export default function Sidebar({
                   ? "No conversations found"
                   : filter === "unread"
                     ? "You’re all caught up"
-                    : "No conversations yet"}
+                    : filter === "archived" ? "No archived conversations" : "No conversations yet"}
               </p>
               <button className="text-button" onClick={onNew}>
                 Start a conversation

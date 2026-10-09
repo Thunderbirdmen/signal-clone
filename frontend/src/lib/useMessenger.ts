@@ -19,6 +19,8 @@ export function useMessenger(
   const socket = useRef<WebSocket | null>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
   const notifyRef = useRef(notify);
   notifyRef.current = notify;
   // Coalesce simultaneous socket, focus and polling refreshes into one fetch loop.
@@ -148,7 +150,8 @@ export function useMessenger(
           if (
             event.sender_id &&
             event.sender_id !== me.id &&
-            event.conversation_id !== activeRef.current
+            event.conversation_id !== activeRef.current &&
+            !conversationsRef.current.find((c) => c.id === event.conversation_id)?.muted
           )
             notifyRef.current("New message received");
         }
@@ -358,6 +361,26 @@ export function useMessenger(
         JSON.stringify({ type: "typing", conversation_id: activeRef.current }),
       );
   }
+  async function setPreference(c: Conversation, field: "pinned" | "muted" | "archived", value: boolean) {
+    try {
+      await api(`/conversations/${c.id}/preferences`, token, {
+        method: "PATCH",
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (field === "archived" && value && activeRef.current === c.id) setActive(null);
+      await refresh();
+    } catch (e) {
+      notifyRef.current((e as Error).message);
+    }
+  }
+  async function markRead(cid: number) {
+    try {
+      await api(`/conversations/${cid}/read`, token, post());
+      await refresh();
+    } catch (e) {
+      notifyRef.current((e as Error).message);
+    }
+  }
   return {
     conversations,
     contacts,
@@ -381,5 +404,7 @@ export function useMessenger(
     remove,
     older,
     hasOlder,
+    setPreference,
+    markRead,
   };
 }

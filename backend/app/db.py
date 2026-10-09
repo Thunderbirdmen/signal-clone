@@ -101,6 +101,9 @@ def initialize():
             ("messages", "expires_at", "TEXT"),
             ("messages", "deleted_at", "TEXT"),
             ("messages", "edited_at", "TEXT"),
+            ("members", "pinned", "INTEGER NOT NULL DEFAULT 0"),
+            ("members", "muted", "INTEGER NOT NULL DEFAULT 0"),
+            ("members", "archived", "INTEGER NOT NULL DEFAULT 0"),
         ]:
             columns = {
                 row["name"] for row in conn.execute(f"PRAGMA table_info({table})")

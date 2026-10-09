@@ -68,12 +68,15 @@ export type Message = {
 };
 export type Conversation = {
   disappear_seconds: number;
+  pinned: number;
+  muted: number;
+  archived: number;
   id: number;
   kind: "direct" | "group";
   name: string | null;
   created_at: string;
   members: User[];
-  last_message: Message | null;
+  last_message: (Message & { attachment_type?: string | null }) | null;
   unread: number;
 };
 export async function api<T>(
@@ -107,11 +110,15 @@ export const post = (data: unknown = {}) => ({
   body: JSON.stringify(data),
 });
 export function title(c: Conversation, me: number) {
+  if (c.kind === "direct" && c.members.length === 1 && c.members[0].id === me)
+    return "Note to Self";
   return c.kind === "group"
     ? c.name || "Group"
     : c.members.find((m) => m.id !== me)?.display_name || "Conversation";
 }
 export function avatar(c: Conversation, me: number) {
+  if (c.kind === "direct" && c.members.length === 1 && c.members[0].id === me)
+    return c.members[0].avatar;
   return c.kind === "group"
     ? "👥"
     : c.members.find((m) => m.id !== me)?.avatar || "💙";

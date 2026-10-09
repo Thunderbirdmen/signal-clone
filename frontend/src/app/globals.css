@@ -549,6 +549,14 @@ small {
   flex: 1;
   padding: 8px;
 }
+.conversation-item { position: relative; }
+.conversation-item .conversation { padding-right: 34px; }
+.conversation-options { position: absolute; right: 12px; top: 31px; color: var(--muted); width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; opacity: 0; }
+.conversation-item:hover .conversation-options, .conversation-options:focus-visible, .conversation-options[aria-expanded="true"] { opacity: 1; }
+.conversation-options:hover { background: var(--selected); }
+.conversation-menu { display: grid; gap: 2px; margin: 0 8px 8px 60px; padding: 5px; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 6px 20px #0002; }
+.conversation-menu button { display: flex; align-items: center; gap: 9px; text-align: left; padding: 8px; border-radius: 5px; font-size: 12px; }
+.conversation-menu button:hover { background: var(--surface); }
 .conversation {
   width: 100%;
   display: flex;
@@ -584,6 +592,7 @@ small {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.conversation-top svg { color: var(--muted); flex: none; }
 .conversation-top > span {
   color: var(--muted);
   font-size: 10px;
@@ -1086,6 +1095,22 @@ small {
 .contact-search {
   margin: 8px 0 12px;
 }
+.note-self-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  padding: 11px 13px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-align: left;
+  color: var(--blue);
+}
+.note-self-row:hover { background: var(--surface); }
+.note-self-row span { flex: 1; color: var(--text); }
+.note-self-row strong { display: block; font-size: 13px; }
+.note-self-row small { margin-top: 3px; color: var(--muted); font-size: 11px; }
 .contact-list {
   max-height: 300px;
   overflow-y: auto;

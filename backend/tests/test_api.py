@@ -58,6 +58,15 @@ def test_registration_persistence_and_logout(client):
     h, data = login(client, "newuser")
     assert client.get("/me", headers=h).json()["username"] == "newuser"
     assert {person["username"] for person in client.get("/contacts", headers=h).json()} == {"alex", "maya", "jordan"}
+    self_chats = [
+        chat for chat in client.get("/conversations", headers=h).json()
+        if len(chat["members"]) == 1 and chat["members"][0]["id"] == data["user"]["id"]
+    ]
+    assert len(self_chats) == 1
+    self_id = self_chats[0]["id"]
+    assert client.post("/conversations/direct", headers=h, json={"user_id": data["user"]["id"]}).json()["id"] == self_id
+    assert send(client, h, self_id, "Remember this", "self-note").status_code == 200
+    assert client.get(f"/conversations/{self_id}/messages", headers=h).json()[-1]["body"] == "Remember this"
     response = client.patch(
         "/me", headers=h, json={"display_name": "New Person", "avatar": "🚀"}
     )
@@ -289,6 +298,20 @@ def test_group_rename_roles_leave_and_audit(client):
     assert client.delete(f"/conversations/{cid}/leave", headers=maya).status_code == 422
 
 
+def test_conversation_preferences_are_private_to_each_member(client):
+    alex, _ = login(client, "alex")
+    maya, _ = login(client, "maya")
+    path = "/conversations/1/preferences"
+    assert client.patch(path, headers=alex, json={}).status_code == 422
+    assert client.patch(path, headers=alex, json={"pinned": True, "muted": True, "archived": True}).status_code == 200
+    alex_chat = next(c for c in client.get("/conversations", headers=alex).json() if c["id"] == 1)
+    maya_chat = next(c for c in client.get("/conversations", headers=maya).json() if c["id"] == 1)
+    assert (alex_chat["pinned"], alex_chat["muted"], alex_chat["archived"]) == (1, 1, 1)
+    assert (maya_chat["pinned"], maya_chat["muted"], maya_chat["archived"]) == (0, 0, 0)
+    outsider, _ = login(client, "outsider")
+    assert client.patch(path, headers=outsider, json={"pinned": True}).status_code == 403
+
+
 def test_password_privacy_demo_toggle_and_headers(client, monkeypatch):
     new, data = login(client, "secureuser")
     assert "password_hash" not in data["user"]
@@ -347,6 +370,9 @@ def test_seed_is_idempotent(client):
 
     with db.connect() as conn:
         count = conn.execute("SELECT count(*) FROM messages").fetchone()[0]
+        assert conn.execute("SELECT count(*) FROM users").fetchone()[0] == 8
+        assert conn.execute("SELECT count(*) FROM conversations WHERE kind='group'").fetchone()[0] == 4
+        assert conn.execute("SELECT count(*) FROM conversations WHERE kind='direct' AND direct_key NOT IN (SELECT id || ':' || id FROM users)").fetchone()[0] == 6
     seed()
     with db.connect() as conn:
         assert conn.execute("SELECT count(*) FROM messages").fetchone()[0] == count

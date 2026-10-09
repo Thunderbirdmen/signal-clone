@@ -212,7 +212,9 @@ export default function Chat({
           <span>
             <strong>{title(chat, me.id)}</strong>
             <small>
-              {chat.kind === "group"
+              {chat.kind === "direct" && chat.members.length === 1
+                ? "Notes just for this account"
+                : chat.kind === "group"
                 ? `${chat.members.length} members`
                 : other?.online
                   ? "Online"

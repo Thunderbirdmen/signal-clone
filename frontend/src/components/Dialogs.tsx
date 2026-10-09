@@ -10,6 +10,7 @@ import {
   Bell,
   Monitor,
   Check,
+  NotebookPen,
 } from "lucide-react";
 import {
   api,
@@ -28,12 +29,14 @@ type Common = {
 };
 export function NewChat({
   token,
+  me,
   contacts,
   onClose,
   onCreated,
   refresh,
   notify,
 }: Common & {
+  me: User;
   contacts: User[];
   onCreated: (id: number) => void;
   refresh: () => Promise<void>;
@@ -124,6 +127,23 @@ export function NewChat({
         </form>
       ) : (
         <>
+          {tab === "chat" && (
+            <button
+              className="note-self-row"
+              disabled={busy}
+              onClick={() => void action(async () => {
+                const conversation = await api<{ id: number }>(
+                  "/conversations/direct", token, post({ user_id: me.id }),
+                );
+                await refresh();
+                onCreated(conversation.id);
+              })}
+            >
+              <NotebookPen size={20} aria-hidden="true" />
+              <span><strong>Note to Self</strong><small>Keep a thought for later</small></span>
+              <ChevronRight size={17} aria-hidden="true" />
+            </button>
+          )}
           {tab === "group" && (
             <label>
               Group name
