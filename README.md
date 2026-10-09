@@ -4,7 +4,7 @@ A Signal-inspired messaging application for the fullstack recruitment assignment
 
 **Live demo:** [tanishq-signal-clone.vercel.app](https://tanishq-signal-clone.vercel.app) · [API health](https://signal-clone-api-u17l.onrender.com/health). The backend runs on Render's free tier: it can take around a minute to wake after inactivity, and its SQLite data can be erased when the service restarts or redeploys. Use only the seeded demo accounts and test data.
 
-> Educational demo, not an official Signal client. Password sign-in and account creation are separate; sample accounts use an explicit public demo entry. Messages are stored as plaintext; real end-to-end encryption is not implemented. Do not use it for private communication.
+> Educational demo, not an official Signal client. Sign-in and registration both use the fixed mock OTP `123456`; the sample-account shortcuts only fill a username. Messages are stored as plaintext; real end-to-end encryption is not implemented. Do not use it for private communication.
 
 ![Desktop conversation preview](docs/desktop-features.jpg)
 
@@ -33,7 +33,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open **http://localhost:3000**. API documentation: **http://localhost:8000/docs**. Database and demo data are created automatically on the backend's first start.
+Open **http://localhost:3000** when running both servers on your own computer. API documentation is at **http://localhost:8000/docs**. The database and demo data are created automatically on the backend's first start. To use the already-hosted app, open the [live Vercel demo](https://tanishq-signal-clone.vercel.app/) instead.
 
 If your Python installation lacks wheels for an optional `uvicorn[standard]` dependency, use Python 3.13 (the version used for validation).
 
@@ -47,8 +47,8 @@ If your Python installation lacks wheels for an optional `uvicorn[standard]` dep
 | sam | Sam Rivera |
 | riley | Riley Park |
 | priya | Priya Shah |
-| noah | Noah Williams |
-| ella | Ella Brooks |
+| noah | Noah Brooks |
+| ella | Ella Kim |
 
 Sign-in and registration both use the fixed mock OTP **123456**. Enter a username or phone-number identifier, then the code. Registration also collects a display name and avatar. The sample-account shortcuts fill Alex, Maya, or Jordan's username and still require the code. No SMS is sent; this does not prove ownership of an identifier. New accounts start with three demo contacts and Note to Self. Existing accounts retain their stored profile; edit it in Settings.
 
