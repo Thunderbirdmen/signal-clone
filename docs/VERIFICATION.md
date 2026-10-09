@@ -6,7 +6,7 @@ Validated locally and against the hosted demo on 8–9 October 2026 with Node.js
 
 - Next.js production build: passed.
 - TypeScript typecheck: passed.
-- Python integration suite: **21 passed** after the seeded-contact backend change.
+- Python integration suite: **22 passed** after Note to Self, larger seed data, and private chat preferences.
 - Python unused-import check: passed; Python and frontend source formatted.
 - `npm audit --omit=dev --audit-level=high`: **0 reported vulnerabilities** in production dependencies on 9 October. This is a dependency check, not a security audit of the application.
 
@@ -45,5 +45,6 @@ Screenshots: `desktop-features.jpg` and `mobile-features.jpg` in this directory.
 - On 9 October 2026, the HTTPS Vercel demo completed the two-step registration with fixed OTP, showed three seeded contacts for the new account, kept the session across reload, logged out, and signed back in with its password. The sign-in and signup layouts were inspected at desktop and 390 × 844 mobile width.
 - A hosted API smoke test registered three accounts, confirmed the seeded contacts, created a direct conversation, sent and read a persistent message, created and renamed a three-member group, and confirmed that logout revoked a session.
 - A separate hosted WebSocket smoke test connected two authenticated accounts with the production frontend Origin. The recipient received the real-time sync event after a message was sent, and REST history contained that same message.
+- The final hosted API returned eight conversations for Alex, including Note to Self, with boolean preference fields. In the live Vercel UI, Alex signed in through the sample-account picker; the conversation list rendered without stray zeroes, and pin/unpin changed ordering and its icon. Render showed the backend deploy live, and Vercel showed the final frontend deploy ready.
 - The Render free instance has no persistent disk. Persistence across a provider restart is unavailable and should not be claimed for the hosted demo.
 - This is not a load test, a cryptographic security review, or exhaustive automated browser coverage.
