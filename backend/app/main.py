@@ -23,7 +23,7 @@ from fastapi.responses import Response
 from urllib.parse import quote
 from contextlib import suppress
 from .features import decode_attachment, purge_expired, REACTIONS, TIMERS
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from .db import connect, initialize
 from .realtime import hub
 from .seed import seed
@@ -85,11 +85,13 @@ app.add_middleware(
 
 
 class Login(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     username: str = Field(min_length=3, max_length=64)
     otp: str = Field(min_length=6, max_length=6)
 
 
 class Register(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     username: str = Field(min_length=3, max_length=64)
     display_name: str = Field(min_length=1, max_length=60)
     avatar: str = "💙"

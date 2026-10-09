@@ -323,6 +323,7 @@ def test_otp_only_and_security_headers(client):
     with db.connect() as conn:
         assert conn.execute("SELECT password_hash FROM users WHERE username='secureuser'").fetchone()[0] is None
     assert client.post("/auth/login", json={"username": "secureuser", "password": "123456"}).status_code == 422
+    assert client.post("/auth/login", json={"username": "secureuser", "otp": "123456", "password": "unused"}).status_code == 422
     assert login(client, "secureuser")[1]["user"]["id"] == data["user"]["id"]
 
 
