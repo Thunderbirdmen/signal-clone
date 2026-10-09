@@ -68,9 +68,9 @@ export type Message = {
 };
 export type Conversation = {
   disappear_seconds: number;
-  pinned: number;
-  muted: number;
-  archived: number;
+  pinned: boolean;
+  muted: boolean;
+  archived: boolean;
   id: number;
   kind: "direct" | "group";
   name: string | null;

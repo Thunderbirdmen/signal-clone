@@ -12,6 +12,7 @@ import {
   Archive,
   MoreHorizontal,
   CheckCheck,
+  Timer,
 } from "lucide-react";
 import {
   Conversation,
@@ -152,6 +153,7 @@ export default function Sidebar({
                   <strong>{title(c, me.id)}</strong>
                   {Boolean(c.pinned) && <Pin size={13} aria-label="Pinned" />}
                   {Boolean(c.muted) && <VolumeX size={13} aria-label="Muted" />}
+                  {c.disappear_seconds > 0 && <Timer size={13} aria-label="Disappearing messages enabled" />}
                   <span className={c.unread ? "unread-time" : ""}>
                     {c.last_message
                       ? dayLabel(c.last_message.created_at) === "Today"
@@ -165,10 +167,16 @@ export default function Sidebar({
                     {c.last_message?.sender_id === me.id && (
                       <Receipt status="sent" />
                     )}
-                    {c.kind === "group" && c.last_message
-                      ? `${c.last_message.sender_name.split(" ")[0]}: `
-                      : ""}
-                    {c.last_message?.body || (c.last_message?.attachment_type?.startsWith("image/") ? "Photo" : c.last_message?.attachment_type ? "Attachment" : "Start a conversation")}
+                    {c.last_message?.sender_id === me.id
+                      ? "You: "
+                      : c.kind === "group" && c.last_message
+                        ? `${c.last_message.sender_name.split(" ")[0]}: `
+                        : ""}
+                    {c.last_message?.attachment_type?.startsWith("image/")
+                      ? `Photo${c.last_message.body ? ` · ${c.last_message.body}` : ""}`
+                      : c.last_message?.attachment_type
+                        ? `File${c.last_message.body ? ` · ${c.last_message.body}` : ""}`
+                        : c.last_message?.body || "Start a conversation"}
                   </p>
                   {c.unread > 0 && <b className="badge">{c.unread}</b>}
                 </div>
